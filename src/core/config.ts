@@ -1,0 +1,63 @@
+export type AppState = 'BOOT' | 'IDLE' | 'FADE_IN' | 'RUN' | 'TRANSITION' | 'FADE_OUT' | 'BLACK';
+
+export interface AppConfig {
+  cycleSeconds: number;
+  gridTileSize: number;
+  fadeInMs: number;
+  transitionMs: number;
+  fadeOutMs: number;
+  fftSize: 2048 | 1024 | 512;
+  silenceRms: number;
+  silenceHoldMs: number;
+  resumeHoldMs: number;
+  distortionStrength: number;
+  lowBand: [number, number];
+  midBand: [number, number];
+  highBand: [number, number];
+}
+
+export const DEFAULT_CONFIG: AppConfig = {
+  cycleSeconds: 30,
+  gridTileSize: 32,
+  fadeInMs: 1200,
+  transitionMs: 2000,
+  fadeOutMs: 600,
+  fftSize: 2048,
+  silenceRms: 0.01,
+  silenceHoldMs: 3000,
+  resumeHoldMs: 500,
+  distortionStrength: 1.0,
+  lowBand: [20, 200],
+  midBand: [200, 2000],
+  highBand: [2000, 8000],
+};
+
+export interface TileUniforms {
+  time: number;
+  alpha: number;
+  cols: number;
+  rows: number;
+  imgW: number;
+  imgH: number;
+  strength: number;
+  pad: number; // For alignment
+}
+
+export interface AudioBands {
+  low: number;
+  mid: number;
+  high: number;
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+export function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+export function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
