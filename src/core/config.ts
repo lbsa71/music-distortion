@@ -23,6 +23,8 @@ export interface AppConfig {
   beatIntensity: number;
   rotationIntensity: number;
   flowIntensity: number;
+  // Random intensity cycling
+  enableRandomIntensities: boolean;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -48,6 +50,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   beatIntensity: 1.0,
   rotationIntensity: 1.0,
   flowIntensity: 1.0,
+  // Random intensity cycling
+  enableRandomIntensities: true,
 };
 
 export interface TileUniforms {
@@ -83,4 +87,16 @@ export function easeInOutCubic(t: number): number {
 export function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+// Generate logarithmically weighted random intensity (tends towards lower values)
+export function generateLogWeightedIntensity(min: number = 0.1, max: number = 2.0): number {
+  // Generate random value between 0 and 1
+  const random = Math.random();
+  
+  // Apply logarithmic weighting (square root to bias towards lower values)
+  const weighted = Math.sqrt(random);
+  
+  // Scale to desired range
+  return min + (max - min) * weighted;
 }

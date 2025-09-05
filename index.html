@@ -23,8 +23,8 @@
         
         <div id="visual-controls">
           <label>
-            Grid Tile Size:
-            <input type="range" id="tile-size" min="16" max="64" value="32" />
+            Grid Tile Size (1px = single tile, 2000px = many tiles):
+            <input type="range" id="tile-size" min="1" max="2000" value="32" />
             <span id="tile-size-value">32px</span>
           </label>
           
@@ -96,6 +96,11 @@
             Flow Intensity:
             <input type="range" id="flow-intensity" min="0" max="2" step="0.1" value="1.0" />
             <span id="flow-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            <input type="checkbox" id="enable-random-intensities" checked />
+            Enable Random Intensity Cycling
           </label>
         </div>
         

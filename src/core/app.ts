@@ -1,5 +1,5 @@
 import { StateMachine } from './fsm.js';
-import { DEFAULT_CONFIG, AppConfig, TileUniforms, AudioBands, clamp, easeInOutCubic } from './config.js';
+import { DEFAULT_CONFIG, AppConfig, TileUniforms, AudioBands, clamp, easeInOutCubic, generateLogWeightedIntensity } from './config.js';
 import { AudioAnalyzer } from '../audio/analyzer.js';
 import { getAudioStream, stopAudioStream, requestAudioPermission } from '../audio/input.js';
 import { ImageLoader, LoadedImage } from '../images/loader.js';
@@ -209,8 +209,11 @@ export class MusicMosaicApp {
   private async resumeVisualization(): Promise<void> {
     console.log('Resuming visualization...');
     try {
-      // Load a new image for resuming
-      this.currentImage = await this.imageLoader.loadRandomImage();
+      // Generate new random intensities for the resumed image
+      this.generateRandomIntensities();
+      
+      // Load the next image in sequence for resuming
+      this.currentImage = await this.imageLoader.loadNextImage();
       console.log('Resume image loaded:', this.currentImage.url);
       
       if (this.renderer && this.currentImage) {
@@ -221,6 +224,36 @@ export class MusicMosaicApp {
       }
     } catch (error) {
       console.error('Error resuming visualization:', error);
+    }
+  }
+
+  private generateRandomIntensities(): void {
+    if (this.config.enableRandomIntensities) {
+      this.config.rippleIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      this.config.pulseIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      this.config.detailIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      this.config.beatIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      this.config.rotationIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      this.config.flowIntensity = generateLogWeightedIntensity(0.1, 2.0);
+      
+      // Update the UI sliders to reflect the new values
+      this.uiController.updateAudioEffectIntensities({
+        rippleIntensity: this.config.rippleIntensity,
+        pulseIntensity: this.config.pulseIntensity,
+        detailIntensity: this.config.detailIntensity,
+        beatIntensity: this.config.beatIntensity,
+        rotationIntensity: this.config.rotationIntensity,
+        flowIntensity: this.config.flowIntensity,
+      });
+      
+      console.log('Generated random intensities:', {
+        ripple: this.config.rippleIntensity.toFixed(2),
+        pulse: this.config.pulseIntensity.toFixed(2),
+        detail: this.config.detailIntensity.toFixed(2),
+        beat: this.config.beatIntensity.toFixed(2),
+        rotation: this.config.rotationIntensity.toFixed(2),
+        flow: this.config.flowIntensity.toFixed(2)
+      });
     }
   }
 
@@ -238,6 +271,7 @@ export class MusicMosaicApp {
 
   private onTransitionStart(): void {
     this.transitionStartTime = performance.now();
+    this.generateRandomIntensities(); // Generate new random intensities for the next image
     console.log('Transition started');
   }
 

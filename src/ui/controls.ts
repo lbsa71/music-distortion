@@ -24,6 +24,7 @@ export interface UIElements {
   beatIntensitySlider: HTMLInputElement;
   rotationIntensitySlider: HTMLInputElement;
   flowIntensitySlider: HTMLInputElement;
+  enableRandomIntensitiesCheckbox: HTMLInputElement;
   
   // Status displays
   fpsDisplay: HTMLElement;
@@ -92,6 +93,7 @@ export class UIController {
       beatIntensitySlider: get('beat-intensity') as HTMLInputElement,
       rotationIntensitySlider: get('rotation-intensity') as HTMLInputElement,
       flowIntensitySlider: get('flow-intensity') as HTMLInputElement,
+      enableRandomIntensitiesCheckbox: get('enable-random-intensities') as HTMLInputElement,
       
       fpsDisplay: get('fps'),
       rmsDisplay: get('rms'),
@@ -131,6 +133,7 @@ export class UIController {
     this.elements.beatIntensitySlider.value = this.config.beatIntensity.toString();
     this.elements.rotationIntensitySlider.value = this.config.rotationIntensity.toString();
     this.elements.flowIntensitySlider.value = this.config.flowIntensity.toString();
+    this.elements.enableRandomIntensitiesCheckbox.checked = this.config.enableRandomIntensities;
     
     // Update value displays
     this.updateValueDisplays();
@@ -224,6 +227,12 @@ export class UIController {
       this.emit('flow-intensity-changed', this.config.flowIntensity);
     });
     
+    // Random intensity checkbox
+    this.elements.enableRandomIntensitiesCheckbox.addEventListener('change', () => {
+      this.config.enableRandomIntensities = this.elements.enableRandomIntensitiesCheckbox.checked;
+      this.emit('random-intensities-changed', this.config.enableRandomIntensities);
+    });
+    
     // Debug controls
     this.elements.nextImageBtn.addEventListener('click', () => {
       this.emit('next-image');
@@ -244,7 +253,14 @@ export class UIController {
   }
 
   private updateValueDisplays(): void {
-    this.elements.tileSizeValue.textContent = `${this.config.gridTileSize}px`;
+    // Calculate tile count for display
+    const imageWidth = 1920; // Default image width
+    const imageHeight = 1080; // Default image height
+    const cols = Math.ceil(imageWidth / this.config.gridTileSize);
+    const rows = Math.ceil(imageHeight / this.config.gridTileSize);
+    const tileCount = cols * rows;
+    
+    this.elements.tileSizeValue.textContent = `${this.config.gridTileSize}px (${tileCount} tiles)`;
     this.elements.distortionStrengthValue.textContent = this.config.distortionStrength.toFixed(1);
     this.elements.cycleDurationValue.textContent = `${this.config.cycleSeconds}s`;
     this.elements.silenceThresholdValue.textContent = this.config.silenceRms.toFixed(3);
@@ -337,6 +353,24 @@ export class UIController {
     this.elements.lowBandDisplay.textContent = low.toFixed(2);
     this.elements.midBandDisplay.textContent = mid.toFixed(2);
     this.elements.highBandDisplay.textContent = high.toFixed(2);
+  }
+
+  updateAudioEffectIntensities(intensities: {
+    rippleIntensity: number;
+    pulseIntensity: number;
+    detailIntensity: number;
+    beatIntensity: number;
+    rotationIntensity: number;
+    flowIntensity: number;
+  }): void {
+    this.elements.rippleIntensitySlider.value = intensities.rippleIntensity.toString();
+    this.elements.pulseIntensitySlider.value = intensities.pulseIntensity.toString();
+    this.elements.detailIntensitySlider.value = intensities.detailIntensity.toString();
+    this.elements.beatIntensitySlider.value = intensities.beatIntensity.toString();
+    this.elements.rotationIntensitySlider.value = intensities.rotationIntensity.toString();
+    this.elements.flowIntensitySlider.value = intensities.flowIntensity.toString();
+    
+    this.updateValueDisplays();
   }
 
   getConfig(): AppConfig {
