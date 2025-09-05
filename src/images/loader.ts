@@ -108,6 +108,7 @@ export class ImageLoader {
     
     this.currentIndex = (this.currentIndex + 1) % this.imageUrls.length;
     const url = this.imageUrls[this.currentIndex];
+    console.log(`Loading next image: index ${this.currentIndex}/${this.imageUrls.length}, URL: ${url}`);
     return this.loadImage(url);
   }
 
@@ -118,6 +119,7 @@ export class ImageLoader {
     
     const nextIndex = (this.currentIndex + 1) % this.imageUrls.length;
     const url = this.imageUrls[nextIndex];
+    console.log(`Preloading next image: index ${nextIndex}/${this.imageUrls.length} (current: ${this.currentIndex}), URL: ${url}`);
     
     // Load in background without changing currentIndex
     return this.loadImage(url);

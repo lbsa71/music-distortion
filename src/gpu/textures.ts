@@ -17,12 +17,12 @@ export class TextureManager {
     // Create a small texture for FFT band data (1x1 RGBA)
     this.fftTexture = this.device.createTexture({
       size: [1, 1, 1],
-      format: 'rgba32float',
+      format: 'rgba8unorm',
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
   }
 
-  createTextureFromImage(image: LoadedImage): GPUTexture {
+  async createTextureFromImage(image: LoadedImage): Promise<GPUTexture> {
     const texture = this.device.createTexture({
       size: [image.width, image.height, 1],
       format: 'rgba8unorm',
@@ -38,6 +38,9 @@ export class TextureManager {
       [image.width, image.height, 1]
     );
 
+    // Wait for the copy operation to complete
+    await this.device.queue.onSubmittedWorkDone();
+
     return texture;
   }
 
@@ -51,28 +54,31 @@ export class TextureManager {
     });
   }
 
-  setCurrentImage(image: LoadedImage): void {
+  async setCurrentImage(image: LoadedImage): Promise<void> {
     // Clean up old texture
     if (this.currentTexture) {
       this.currentTexture.destroy();
+      this.currentTexture = null;
     }
 
-    this.currentTexture = this.createTextureFromImage(image);
+    this.currentTexture = await this.createTextureFromImage(image);
     
     // Create/update grayscale texture
     if (this.grayscaleTexture) {
       this.grayscaleTexture.destroy();
+      this.grayscaleTexture = null;
     }
     this.grayscaleTexture = this.createGrayscaleTexture(image.width, image.height);
   }
 
-  setNextImage(image: LoadedImage): void {
+  async setNextImage(image: LoadedImage): Promise<void> {
     // Clean up old texture
     if (this.nextTexture) {
       this.nextTexture.destroy();
+      this.nextTexture = null;
     }
 
-    this.nextTexture = this.createTextureFromImage(image);
+    this.nextTexture = await this.createTextureFromImage(image);
   }
 
   swapTextures(): void {
@@ -85,12 +91,18 @@ export class TextureManager {
   updateFftData(low: number, mid: number, high: number): void {
     if (!this.fftTexture) return;
 
-    const fftData = new Float32Array([low, mid, high, 1.0]);
+    // Convert float values (0-1) to normalized bytes (0-255)
+    const fftData = new Uint8Array([
+      Math.round(low * 255),
+      Math.round(mid * 255), 
+      Math.round(high * 255),
+      255 // alpha
+    ]);
     
     this.device.queue.writeTexture(
       { texture: this.fftTexture },
       fftData,
-      { bytesPerRow: 4 * 4 }, // 4 floats * 4 bytes
+      { bytesPerRow: 4 }, // 4 bytes per pixel
       { width: 1, height: 1, depthOrArrayLayers: 1 }
     );
   }
@@ -109,6 +121,15 @@ export class TextureManager {
 
   getFftTexture(): GPUTexture | null {
     return this.fftTexture;
+  }
+
+  // Validate that all required textures exist and are valid
+  isValidForRendering(): boolean {
+    return !!(
+      this.currentTexture &&
+      this.fftTexture &&
+      this.grayscaleTexture
+    );
   }
 
   destroy(): void {

@@ -57,6 +57,24 @@ export async function initializeWebGPU(canvas: HTMLCanvasElement): Promise<GPUDe
     // Set up error handling
     device.addEventListener('uncapturederror', (event) => {
       console.error('WebGPU uncaptured error:', event.error);
+      
+      // Log additional context for debugging
+      if (event.error instanceof GPUValidationError) {
+        console.error('Validation error details:', {
+          message: event.error.message,
+          stack: event.error.stack
+        });
+      }
+    });
+
+    // Handle device loss
+    device.addEventListener('lost', (event) => {
+      console.error('WebGPU device lost:', event.reason);
+      if (event.reason === 'destroyed') {
+        console.log('Device was intentionally destroyed');
+      } else {
+        console.error('Device lost unexpectedly:', event.message);
+      }
     });
 
     console.log('WebGPU initialized successfully');

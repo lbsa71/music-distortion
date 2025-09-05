@@ -14,6 +14,7 @@ export class AudioAnalyzer {
   private silenceStartTime: number | null = null;
   private soundStartTime: number | null = null;
   private lastRms = 0;
+  private lastDebugTime = 0;
   
   // EMA for band normalization
   private lowEma = 0;
@@ -133,6 +134,12 @@ export class AudioAnalyzer {
   checkSilence(): { isSilent: boolean; shouldResume: boolean } {
     const rms = this.getRMS();
     const now = performance.now();
+    
+    // Debug logging every 100ms to avoid spam
+    if (now - (this.lastDebugTime || 0) > 100) {
+      console.log('Audio RMS:', rms, 'Silence threshold:', this.config.silenceRms, 'Resume threshold:', this.config.silenceRms * 1.25);
+      this.lastDebugTime = now;
+    }
     
     if (rms < this.config.silenceRms) {
       // Below silence threshold

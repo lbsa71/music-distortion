@@ -185,9 +185,10 @@ export class MusicMosaicApp {
     try {
       // Load initial image
       this.currentImage = await this.imageLoader.loadRandomImage();
+      console.log('Current image loaded:', this.currentImage.url);
       
       if (this.renderer && this.currentImage) {
-        this.renderer.setCurrentImage(this.currentImage, this.config.gridTileSize);
+        await this.renderer.setCurrentImage(this.currentImage, this.config.gridTileSize);
         this.stateMachine.transitionTo('FADE_IN');
         this.startRenderLoop();
       }
@@ -200,6 +201,24 @@ export class MusicMosaicApp {
     this.isRunning = false;
     this.stateMachine.reset();
     this.uiController.updateState('IDLE');
+  }
+
+  private async resumeVisualization(): Promise<void> {
+    console.log('Resuming visualization...');
+    try {
+      // Load a new image for resuming
+      this.currentImage = await this.imageLoader.loadRandomImage();
+      console.log('Resume image loaded:', this.currentImage.url);
+      
+      if (this.renderer && this.currentImage) {
+        await this.renderer.setCurrentImage(this.currentImage, this.config.gridTileSize);
+        this.stateMachine.transitionTo('FADE_IN');
+        // Don't call startRenderLoop() since it's already running
+        console.log('Visualization resumed successfully');
+      }
+    } catch (error) {
+      console.error('Error resuming visualization:', error);
+    }
   }
 
   // State machine handlers
@@ -232,17 +251,31 @@ export class MusicMosaicApp {
   private async preloadNextImage(): Promise<void> {
     try {
       this.nextImage = await this.imageLoader.preloadNextImage();
+      console.log('Next image preloaded:', this.nextImage.url);
       if (this.renderer && this.nextImage) {
-        this.renderer.setNextImage(this.nextImage);
+        await this.renderer.setNextImage(this.nextImage);
       }
     } catch (error) {
       console.error('Error preloading next image:', error);
     }
   }
 
-  private forceNextImage(): void {
+  private async forceNextImage(): Promise<void> {
     if (this.stateMachine.getCurrentState() === 'RUN') {
-      this.stateMachine.transitionTo('TRANSITION');
+      console.log('Forcing next image...');
+      try {
+        // Load the actual next image (advancing the index)
+        this.nextImage = await this.imageLoader.loadNextImage();
+        console.log('Next image loaded:', this.nextImage.url);
+        
+        if (this.renderer && this.nextImage) {
+          await this.renderer.setNextImage(this.nextImage);
+        }
+        
+        this.stateMachine.transitionTo('TRANSITION');
+      } catch (error) {
+        console.error('Error loading next image:', error);
+      }
     }
   }
 
@@ -314,10 +347,18 @@ export class MusicMosaicApp {
   private handleSilenceDetection(silenceState: { isSilent: boolean; shouldResume: boolean }): void {
     const currentState = this.stateMachine.getCurrentState();
     
+    console.log('Silence detection:', { 
+      isSilent: silenceState.isSilent, 
+      shouldResume: silenceState.shouldResume, 
+      currentState 
+    });
+    
     if (silenceState.isSilent && (currentState === 'RUN' || currentState === 'TRANSITION')) {
+      console.log('Transitioning to FADE_OUT due to silence');
       this.stateMachine.transitionTo('FADE_OUT');
     } else if (silenceState.shouldResume && currentState === 'BLACK') {
-      this.startVisualization();
+      console.log('Resuming visualization from BLACK state');
+      this.resumeVisualization();
     }
   }
 
@@ -343,6 +384,7 @@ export class MusicMosaicApp {
           if (this.renderer) {
             this.renderer.swapTextures();
           }
+          console.log('Swapping images - old current:', this.currentImage?.url, 'new current:', this.nextImage?.url);
           this.currentImage = this.nextImage;
           this.nextImage = null;
           this.stateMachine.transitionTo('RUN');
