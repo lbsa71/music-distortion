@@ -1,12 +1,5 @@
 [
-  "https://picsum.photos/1920/1080?random=1",
-  "https://picsum.photos/1920/1080?random=2",
-  "https://picsum.photos/1920/1080?random=3",
-  "https://picsum.photos/1920/1080?random=4",
-  "https://picsum.photos/1920/1080?random=5",
-  "https://picsum.photos/1920/1080?random=6",
-  "https://picsum.photos/1920/1080?random=7",
-  "https://picsum.photos/1920/1080?random=8",
-  "https://picsum.photos/1920/1080?random=9",
-  "https://picsum.photos/1920/1080?random=10"
+  "https://via.placeholder.com/512x512/ff0000/ffffff?text=Image+1",
+  "https://via.placeholder.com/512x512/00ff00/ffffff?text=Image+2",
+  "https://via.placeholder.com/512x512/0000ff/ffffff?text=Image+3"
 ]

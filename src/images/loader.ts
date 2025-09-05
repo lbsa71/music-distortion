@@ -17,12 +17,36 @@ export class ImageLoader {
       console.log(`Loaded ${this.imageUrls.length} image URLs`);
     } catch (error) {
       console.error('Error loading image URLs:', error);
-      // Fallback to default images
-      this.imageUrls = [
-        'https://picsum.photos/1920/1080?random=1',
-        'https://picsum.photos/1920/1080?random=2',
-        'https://picsum.photos/1920/1080?random=3',
-      ];
+      // Fallback to default images if loading fails
+      this.imageUrls = [];
+      
+      // Create simple colored canvas test images
+      for (let i = 0; i < 3; i++) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d')!;
+        
+        // Create a gradient pattern
+        const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+        gradient.addColorStop(0, `hsl(${i * 120}, 70%, 50%)`);
+        gradient.addColorStop(1, `hsl(${i * 120 + 60}, 70%, 30%)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Add some pattern
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        for (let x = 0; x < 512; x += 64) {
+          for (let y = 0; y < 512; y += 64) {
+            if ((x + y) % 128 === 0) {
+              ctx.fillRect(x, y, 32, 32);
+            }
+          }
+        }
+        
+        this.imageUrls.push(canvas.toDataURL());
+      }
     }
   }
 
