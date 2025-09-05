@@ -9,6 +9,8 @@ export interface UIElements {
   distortionStrengthSlider: HTMLInputElement;
   cycleDurationSlider: HTMLInputElement;
   silenceThresholdSlider: HTMLInputElement;
+  audioTransitionThresholdSlider: HTMLInputElement;
+  audioTransitionHoldSlider: HTMLInputElement;
   nextImageBtn: HTMLButtonElement;
   freezeAudioBtn: HTMLButtonElement;
   overlay: HTMLElement;
@@ -28,6 +30,8 @@ export interface UIElements {
   distortionStrengthValue: HTMLElement;
   cycleDurationValue: HTMLElement;
   silenceThresholdValue: HTMLElement;
+  audioTransitionThresholdValue: HTMLElement;
+  audioTransitionHoldValue: HTMLElement;
 }
 
 export class UIController {
@@ -59,6 +63,8 @@ export class UIController {
       distortionStrengthSlider: get('distortion-strength') as HTMLInputElement,
       cycleDurationSlider: get('cycle-duration') as HTMLInputElement,
       silenceThresholdSlider: get('silence-threshold') as HTMLInputElement,
+      audioTransitionThresholdSlider: get('audio-transition-threshold') as HTMLInputElement,
+      audioTransitionHoldSlider: get('audio-transition-hold') as HTMLInputElement,
       nextImageBtn: get('next-image') as HTMLButtonElement,
       freezeAudioBtn: get('freeze-audio') as HTMLButtonElement,
       overlay: get('overlay'),
@@ -76,6 +82,8 @@ export class UIController {
       distortionStrengthValue: get('distortion-strength-value'),
       cycleDurationValue: get('cycle-duration-value'),
       silenceThresholdValue: get('silence-threshold-value'),
+      audioTransitionThresholdValue: get('audio-transition-threshold-value'),
+      audioTransitionHoldValue: get('audio-transition-hold-value'),
     };
   }
 
@@ -85,6 +93,8 @@ export class UIController {
     this.elements.distortionStrengthSlider.value = this.config.distortionStrength.toString();
     this.elements.cycleDurationSlider.value = this.config.cycleSeconds.toString();
     this.elements.silenceThresholdSlider.value = this.config.silenceRms.toString();
+    this.elements.audioTransitionThresholdSlider.value = this.config.audioTransitionThreshold.toString();
+    this.elements.audioTransitionHoldSlider.value = this.config.audioTransitionHoldMs.toString();
     
     // Update value displays
     this.updateValueDisplays();
@@ -129,6 +139,18 @@ export class UIController {
       this.emit('silence-threshold-changed', this.config.silenceRms);
     });
     
+    this.elements.audioTransitionThresholdSlider.addEventListener('input', () => {
+      this.config.audioTransitionThreshold = parseFloat(this.elements.audioTransitionThresholdSlider.value);
+      this.updateValueDisplays();
+      this.emit('audio-transition-threshold-changed', this.config.audioTransitionThreshold);
+    });
+    
+    this.elements.audioTransitionHoldSlider.addEventListener('input', () => {
+      this.config.audioTransitionHoldMs = parseInt(this.elements.audioTransitionHoldSlider.value);
+      this.updateValueDisplays();
+      this.emit('audio-transition-hold-changed', this.config.audioTransitionHoldMs);
+    });
+    
     // Debug controls
     this.elements.nextImageBtn.addEventListener('click', () => {
       this.emit('next-image');
@@ -153,6 +175,8 @@ export class UIController {
     this.elements.distortionStrengthValue.textContent = this.config.distortionStrength.toFixed(1);
     this.elements.cycleDurationValue.textContent = `${this.config.cycleSeconds}s`;
     this.elements.silenceThresholdValue.textContent = this.config.silenceRms.toFixed(3);
+    this.elements.audioTransitionThresholdValue.textContent = this.config.audioTransitionThreshold.toFixed(1);
+    this.elements.audioTransitionHoldValue.textContent = `${this.config.audioTransitionHoldMs}ms`;
   }
 
   async populateAudioDevices(): Promise<void> {

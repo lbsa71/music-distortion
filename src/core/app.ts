@@ -36,6 +36,9 @@ export class MusicMosaicApp {
   // Audio reactive state
   private lastAudioBands: AudioBands = { low: 0, mid: 0, high: 0 };
   private audioFrozen = false;
+  
+  // Audio transition state
+  private audioTransitionStartTime: number | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -306,6 +309,9 @@ export class MusicMosaicApp {
     if (this.audioAnalyzer) {
       const silenceState = this.audioAnalyzer.checkSilence();
       this.handleSilenceDetection(silenceState);
+      
+      // Check for audio-reactive image transitions
+      this.handleAudioTransition(audioBands, rms, now);
     }
     
     // Update state machine
@@ -359,6 +365,37 @@ export class MusicMosaicApp {
     } else if (silenceState.shouldResume && currentState === 'BLACK') {
       console.log('Resuming visualization from BLACK state');
       this.resumeVisualization();
+    }
+  }
+
+  private handleAudioTransition(audioBands: AudioBands, rms: number, now: number): void {
+    const currentState = this.stateMachine.getCurrentState();
+    
+    // Only trigger transitions during RUN state
+    if (currentState !== 'RUN') {
+      this.audioTransitionStartTime = null;
+      return;
+    }
+    
+    // Calculate combined audio intensity (RMS + band energy)
+    const combinedIntensity = rms + (audioBands.low + audioBands.mid + audioBands.high) / 3;
+    
+    if (combinedIntensity >= this.config.audioTransitionThreshold) {
+      // Above threshold - start counting
+      if (this.audioTransitionStartTime === null) {
+        this.audioTransitionStartTime = now;
+        console.log('Audio transition threshold reached:', combinedIntensity);
+      }
+      
+      const holdDuration = now - this.audioTransitionStartTime;
+      if (holdDuration >= this.config.audioTransitionHoldMs) {
+        console.log('Audio transition triggered after', holdDuration, 'ms');
+        this.stateMachine.transitionTo('TRANSITION');
+        this.audioTransitionStartTime = null;
+      }
+    } else {
+      // Below threshold - reset counter
+      this.audioTransitionStartTime = null;
     }
   }
 

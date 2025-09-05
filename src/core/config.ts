@@ -11,6 +11,8 @@ export interface AppConfig {
   silenceHoldMs: number;
   resumeHoldMs: number;
   distortionStrength: number;
+  audioTransitionThreshold: number;
+  audioTransitionHoldMs: number;
   lowBand: [number, number];
   midBand: [number, number];
   highBand: [number, number];
@@ -27,6 +29,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   silenceHoldMs: 3000,
   resumeHoldMs: 500,
   distortionStrength: 1.0,
+  audioTransitionThreshold: 0.3,
+  audioTransitionHoldMs: 1000,
   lowBand: [20, 200],
   midBand: [200, 2000],
   highBand: [2000, 8000],
