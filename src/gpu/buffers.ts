@@ -1,6 +1,16 @@
 import { TileUniforms } from '../core/config.js';
 import { GPUDeviceInfo } from './device.js';
 
+// WebGPU types
+declare global {
+  const GPUBufferUsage: {
+    readonly VERTEX: number;
+    readonly UNIFORM: number;
+    readonly STORAGE: number;
+    readonly COPY_DST: number;
+  };
+}
+
 export interface TileInstance {
   tileX: number;
   tileY: number;
@@ -9,10 +19,10 @@ export interface TileInstance {
 }
 
 export class BufferManager {
-  private device: GPUDevice;
-  private vertexBuffer: GPUBuffer | null = null;
-  private instanceBuffer: GPUBuffer | null = null;
-  private uniformBuffer: GPUBuffer | null = null;
+  private device: any;
+  private vertexBuffer: any = null;
+  private instanceBuffer: any = null;
+  private uniformBuffer: any = null;
   private currentCols = 0;
   private currentRows = 0;
 
@@ -45,9 +55,9 @@ export class BufferManager {
   }
 
   private createUniformBuffer(): void {
-    // Size for TileUniforms struct (8 floats = 32 bytes)
+    // Size for TileUniforms struct (13 floats = 52 bytes)
     this.uniformBuffer = this.device.createBuffer({
-      size: 32,
+      size: 52,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
   }
@@ -110,7 +120,12 @@ export class BufferManager {
       uniforms.imgW,
       uniforms.imgH,
       uniforms.strength,
-      uniforms.pad,
+      uniforms.rippleIntensity,
+      uniforms.pulseIntensity,
+      uniforms.detailIntensity,
+      uniforms.beatIntensity,
+      uniforms.rotationIntensity,
+      uniforms.flowIntensity,
     ]);
 
     this.device.queue.writeBuffer(this.uniformBuffer, 0, data);
@@ -142,15 +157,15 @@ export class BufferManager {
     this.device.queue.writeBuffer(this.instanceBuffer, 0, instanceData);
   }
 
-  getVertexBuffer(): GPUBuffer | null {
+  getVertexBuffer(): any {
     return this.vertexBuffer;
   }
 
-  getInstanceBuffer(): GPUBuffer | null {
+  getInstanceBuffer(): any {
     return this.instanceBuffer;
   }
 
-  getUniformBuffer(): GPUBuffer | null {
+  getUniformBuffer(): any {
     return this.uniformBuffer;
   }
 

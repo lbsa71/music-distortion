@@ -56,15 +56,23 @@ export class AudioAnalyzer {
 
   getAudioBands(): AudioBands {
     if (!this.analyser || !this.isActive) {
+      console.log('Audio analyzer not active or analyser missing');
       return { low: 0, mid: 0, high: 0 };
     }
 
     const fftData = new Float32Array(this.fftBuffer.length);
     this.analyser.getFloatFrequencyData(fftData);
     
+    // Debug: Check if we're getting any data
+    const maxValue = Math.max(...fftData);
+    const minValue = Math.min(...fftData);
+    console.log('FFT data range:', minValue, 'to', maxValue);
+    
     const sampleRate = this.audioContext!.sampleRate;
     const binCount = fftData.length;
     const binSize = sampleRate / 2 / binCount;
+    
+    console.log('Sample rate:', sampleRate, 'Bin count:', binCount, 'Bin size:', binSize);
     
     // Map frequency ranges to bin indices
     const lowStart = Math.floor(this.config.lowBand[0] / binSize);
@@ -73,6 +81,8 @@ export class AudioAnalyzer {
     const midEnd = Math.floor(this.config.midBand[1] / binSize);
     const highStart = Math.floor(this.config.highBand[0] / binSize);
     const highEnd = Math.floor(this.config.highBand[1] / binSize);
+    
+    console.log('Band ranges - Low:', lowStart, '-', lowEnd, 'Mid:', midStart, '-', midEnd, 'High:', highStart, '-', highEnd);
     
     // Calculate band energies (convert from dB to linear)
     let lowSum = 0, midSum = 0, highSum = 0;
@@ -98,19 +108,24 @@ export class AudioAnalyzer {
     const mid = midCount > 0 ? midSum / midCount : 0;
     const high = highCount > 0 ? highSum / highCount : 0;
     
+    console.log('Raw band values - Low:', low, 'Mid:', mid, 'High:', high);
+    
     // Apply EMA smoothing
     this.lowEma = this.lowEma * (1 - this.emaAlpha) + low * this.emaAlpha;
     this.midEma = this.midEma * (1 - this.emaAlpha) + mid * this.emaAlpha;
     this.highEma = this.highEma * (1 - this.emaAlpha) + high * this.emaAlpha;
     
-    // Soft clip to prevent spikes
-    const softClip = (x: number) => x / (1 + Math.abs(x));
+    // Scale up the values to make them more visible
+    const scale = 1000; // Scale factor to make small values visible
     
-    return {
-      low: softClip(this.lowEma),
-      mid: softClip(this.midEma),
-      high: softClip(this.highEma),
+    const result = {
+      low: Math.min(this.lowEma * scale, 1.0),
+      mid: Math.min(this.midEma * scale, 1.0),
+      high: Math.min(this.highEma * scale, 1.0),
     };
+    
+    console.log('Final band values:', result);
+    return result;
   }
 
   getRMS(): number {

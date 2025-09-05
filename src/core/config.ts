@@ -16,6 +16,13 @@ export interface AppConfig {
   lowBand: [number, number];
   midBand: [number, number];
   highBand: [number, number];
+  // Enhanced audio-reactive effect controls
+  rippleIntensity: number;
+  pulseIntensity: number;
+  detailIntensity: number;
+  beatIntensity: number;
+  rotationIntensity: number;
+  flowIntensity: number;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -34,6 +41,13 @@ export const DEFAULT_CONFIG: AppConfig = {
   lowBand: [20, 200],
   midBand: [200, 2000],
   highBand: [2000, 8000],
+  // Enhanced audio-reactive effect defaults
+  rippleIntensity: 1.0,
+  pulseIntensity: 1.0,
+  detailIntensity: 1.0,
+  beatIntensity: 1.0,
+  rotationIntensity: 1.0,
+  flowIntensity: 1.0,
 };
 
 export interface TileUniforms {
@@ -44,7 +58,12 @@ export interface TileUniforms {
   imgW: number;
   imgH: number;
   strength: number;
-  pad: number; // For alignment
+  rippleIntensity: number;
+  pulseIntensity: number;
+  detailIntensity: number;
+  beatIntensity: number;
+  rotationIntensity: number;
+  flowIntensity: number;
 }
 
 export interface AudioBands {

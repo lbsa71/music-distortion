@@ -11,6 +11,12 @@ uniform float u_rows;
 uniform float u_imgW;
 uniform float u_imgH;
 uniform float u_strength;
+uniform float u_rippleIntensity;
+uniform float u_pulseIntensity;
+uniform float u_detailIntensity;
+uniform float u_beatIntensity;
+uniform float u_rotationIntensity;
+uniform float u_flowIntensity;
 
 in vec2 a_position;
 in vec2 a_uv;
@@ -46,6 +52,12 @@ precision highp float;
 uniform float u_time;
 uniform float u_alpha;
 uniform float u_strength;
+uniform float u_rippleIntensity;
+uniform float u_pulseIntensity;
+uniform float u_detailIntensity;
+uniform float u_beatIntensity;
+uniform float u_rotationIntensity;
+uniform float u_flowIntensity;
 uniform sampler2D u_currentTex;
 uniform sampler2D u_nextTex;
 uniform vec3 u_audioBands; // low, mid, high
@@ -77,15 +89,67 @@ void main() {
   
   float brightness = v_brightness;
   
-  // Flow field for smooth motion
-  vec2 flow = curlNoise(v_uv * 2.0 + u_time * 0.2) * 0.002;
+  // Calculate audio intensity for different effects
+  float audioIntensity = (low + mid + high) / 3.0;
+  float bassIntensity = low;
+  float trebleIntensity = high;
   
-  // Audio-reactive distortion
-  float dx = u_strength * ((0.6 * low + 0.2 * mid) * mix(0.3, 1.0, brightness)) * 0.01;
-  float dy = u_strength * ((0.6 * mid + 0.2 * high) * mix(1.0, 0.4, brightness)) * 0.01;
+  // Multi-layered distortion effects
   
-  // Apply distortion and flow
-  vec2 distortedUV = v_uv + vec2(dx, dy) + flow;
+  // 1. Bass-driven ripple waves (large, slow movements)
+  float rippleFreq = 3.0 + bassIntensity * 5.0;
+  float rippleAmp = bassIntensity * 0.05 * u_rippleIntensity;
+  float ripplePhase = u_time * 0.5 + length(v_uv - 0.5) * rippleFreq;
+  float rippleX = sin(ripplePhase) * rippleAmp;
+  float rippleY = cos(ripplePhase) * rippleAmp;
+  
+  // 2. Mid-frequency pulsing distortion (medium movements)
+  float pulseFreq = 8.0 + mid * 10.0;
+  float pulseAmp = mid * 0.15 * u_pulseIntensity;
+  float pulsePhase = u_time * 2.0 + v_uv.x * pulseFreq + v_uv.y * pulseFreq;
+  float pulseX = sin(pulsePhase) * pulseAmp;
+  float pulseY = cos(pulsePhase * 1.3) * pulseAmp;
+  
+  // 3. Treble-driven fine detail distortion (small, fast movements)
+  float detailFreq = 20.0 + trebleIntensity * 30.0;
+  float detailAmp = trebleIntensity * 0.1 * u_detailIntensity;
+  float detailPhase = u_time * 4.0 + v_uv.x * detailFreq;
+  float detailX = sin(detailPhase) * detailAmp;
+  float detailY = sin(detailPhase * 1.7) * detailAmp;
+  
+  // 4. Beat-synchronized bursts (when all bands are high)
+  float beatThreshold = 0.3; // Lower threshold for more frequent beats
+  bool isBeat = audioIntensity > beatThreshold;
+  float beatAmp = isBeat ? audioIntensity * 0.3 * u_beatIntensity : 0.0;
+  float beatPhase = u_time * 8.0;
+  float beatX = sin(beatPhase) * beatAmp;
+  float beatY = cos(beatPhase) * beatAmp;
+  
+  // 5. Flow field for organic motion
+  vec2 flow = curlNoise(v_uv * 3.0 + u_time * 0.3) * 0.03 * audioIntensity * u_flowIntensity;
+  
+  // 6. Rotation effect based on audio intensity
+  float rotationAngle = audioIntensity * 0.5 * u_rotationIntensity;
+  vec2 center = vec2(0.5, 0.5);
+  vec2 rotatedUV = v_uv - center;
+  float cosRot = cos(rotationAngle);
+  float sinRot = sin(rotationAngle);
+  vec2 rotated = vec2(
+    rotatedUV.x * cosRot - rotatedUV.y * sinRot,
+    rotatedUV.x * sinRot + rotatedUV.y * cosRot
+  ) + center;
+  
+  // Combine all distortions
+  vec2 distortedUV = rotated + vec2(
+    rippleX + pulseX + detailX + beatX + flow.x,
+    rippleY + pulseY + detailY + beatY + flow.y
+  );
+  
+  // Apply brightness-based modulation
+  float brightnessMod = mix(0.5, 1.5, brightness);
+  distortedUV = mix(v_uv, distortedUV, brightnessMod);
+  
+  // Clamp to valid UV range
   distortedUV = clamp(distortedUV, vec2(0.0), vec2(1.0));
   
   // Sample textures with grayscale conversion
@@ -168,6 +232,12 @@ export class WebGL2Renderer {
       u_imgW: gl.getUniformLocation(this.program, 'u_imgW'),
       u_imgH: gl.getUniformLocation(this.program, 'u_imgH'),
       u_strength: gl.getUniformLocation(this.program, 'u_strength'),
+      u_rippleIntensity: gl.getUniformLocation(this.program, 'u_rippleIntensity'),
+      u_pulseIntensity: gl.getUniformLocation(this.program, 'u_pulseIntensity'),
+      u_detailIntensity: gl.getUniformLocation(this.program, 'u_detailIntensity'),
+      u_beatIntensity: gl.getUniformLocation(this.program, 'u_beatIntensity'),
+      u_rotationIntensity: gl.getUniformLocation(this.program, 'u_rotationIntensity'),
+      u_flowIntensity: gl.getUniformLocation(this.program, 'u_flowIntensity'),
       u_currentTex: gl.getUniformLocation(this.program, 'u_currentTex'),
       u_nextTex: gl.getUniformLocation(this.program, 'u_nextTex'),
       u_audioBands: gl.getUniformLocation(this.program, 'u_audioBands'),
@@ -321,6 +391,12 @@ export class WebGL2Renderer {
     gl.uniform1f(this.uniforms.u_imgW, uniforms.imgW);
     gl.uniform1f(this.uniforms.u_imgH, uniforms.imgH);
     gl.uniform1f(this.uniforms.u_strength, uniforms.strength);
+    gl.uniform1f(this.uniforms.u_rippleIntensity, uniforms.rippleIntensity);
+    gl.uniform1f(this.uniforms.u_pulseIntensity, uniforms.pulseIntensity);
+    gl.uniform1f(this.uniforms.u_detailIntensity, uniforms.detailIntensity);
+    gl.uniform1f(this.uniforms.u_beatIntensity, uniforms.beatIntensity);
+    gl.uniform1f(this.uniforms.u_rotationIntensity, uniforms.rotationIntensity);
+    gl.uniform1f(this.uniforms.u_flowIntensity, uniforms.flowIntensity);
     gl.uniform3f(this.uniforms.u_audioBands, audioBands.low, audioBands.mid, audioBands.high);
     
     // Bind textures

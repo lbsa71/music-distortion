@@ -475,7 +475,12 @@ export class MusicMosaicApp {
       imgW: imageWidth,
       imgH: imageHeight,
       strength: this.config.distortionStrength,
-      pad: 0,
+      rippleIntensity: this.config.rippleIntensity,
+      pulseIntensity: this.config.pulseIntensity,
+      detailIntensity: this.config.detailIntensity,
+      beatIntensity: this.config.beatIntensity,
+      rotationIntensity: this.config.rotationIntensity,
+      flowIntensity: this.config.flowIntensity,
     };
   }
 

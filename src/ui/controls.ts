@@ -17,6 +17,14 @@ export interface UIElements {
   enableAudioBtn: HTMLButtonElement;
   visualizeWithoutAudioBtn: HTMLButtonElement;
   
+  // Audio-reactive effect controls
+  rippleIntensitySlider: HTMLInputElement;
+  pulseIntensitySlider: HTMLInputElement;
+  detailIntensitySlider: HTMLInputElement;
+  beatIntensitySlider: HTMLInputElement;
+  rotationIntensitySlider: HTMLInputElement;
+  flowIntensitySlider: HTMLInputElement;
+  
   // Status displays
   fpsDisplay: HTMLElement;
   rmsDisplay: HTMLElement;
@@ -32,6 +40,12 @@ export interface UIElements {
   silenceThresholdValue: HTMLElement;
   audioTransitionThresholdValue: HTMLElement;
   audioTransitionHoldValue: HTMLElement;
+  rippleIntensityValue: HTMLElement;
+  pulseIntensityValue: HTMLElement;
+  detailIntensityValue: HTMLElement;
+  beatIntensityValue: HTMLElement;
+  rotationIntensityValue: HTMLElement;
+  flowIntensityValue: HTMLElement;
 }
 
 export class UIController {
@@ -71,6 +85,14 @@ export class UIController {
       enableAudioBtn: get('enable-audio') as HTMLButtonElement,
       visualizeWithoutAudioBtn: get('visualize-without-audio') as HTMLButtonElement,
       
+      // Audio-reactive effect controls
+      rippleIntensitySlider: get('ripple-intensity') as HTMLInputElement,
+      pulseIntensitySlider: get('pulse-intensity') as HTMLInputElement,
+      detailIntensitySlider: get('detail-intensity') as HTMLInputElement,
+      beatIntensitySlider: get('beat-intensity') as HTMLInputElement,
+      rotationIntensitySlider: get('rotation-intensity') as HTMLInputElement,
+      flowIntensitySlider: get('flow-intensity') as HTMLInputElement,
+      
       fpsDisplay: get('fps'),
       rmsDisplay: get('rms'),
       stateDisplay: get('state'),
@@ -84,6 +106,12 @@ export class UIController {
       silenceThresholdValue: get('silence-threshold-value'),
       audioTransitionThresholdValue: get('audio-transition-threshold-value'),
       audioTransitionHoldValue: get('audio-transition-hold-value'),
+      rippleIntensityValue: get('ripple-intensity-value'),
+      pulseIntensityValue: get('pulse-intensity-value'),
+      detailIntensityValue: get('detail-intensity-value'),
+      beatIntensityValue: get('beat-intensity-value'),
+      rotationIntensityValue: get('rotation-intensity-value'),
+      flowIntensityValue: get('flow-intensity-value'),
     };
   }
 
@@ -95,6 +123,14 @@ export class UIController {
     this.elements.silenceThresholdSlider.value = this.config.silenceRms.toString();
     this.elements.audioTransitionThresholdSlider.value = this.config.audioTransitionThreshold.toString();
     this.elements.audioTransitionHoldSlider.value = this.config.audioTransitionHoldMs.toString();
+    
+    // Set audio-reactive effect initial values
+    this.elements.rippleIntensitySlider.value = this.config.rippleIntensity.toString();
+    this.elements.pulseIntensitySlider.value = this.config.pulseIntensity.toString();
+    this.elements.detailIntensitySlider.value = this.config.detailIntensity.toString();
+    this.elements.beatIntensitySlider.value = this.config.beatIntensity.toString();
+    this.elements.rotationIntensitySlider.value = this.config.rotationIntensity.toString();
+    this.elements.flowIntensitySlider.value = this.config.flowIntensity.toString();
     
     // Update value displays
     this.updateValueDisplays();
@@ -151,6 +187,43 @@ export class UIController {
       this.emit('audio-transition-hold-changed', this.config.audioTransitionHoldMs);
     });
     
+    // Audio-reactive effect controls
+    this.elements.rippleIntensitySlider.addEventListener('input', () => {
+      this.config.rippleIntensity = parseFloat(this.elements.rippleIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('ripple-intensity-changed', this.config.rippleIntensity);
+    });
+    
+    this.elements.pulseIntensitySlider.addEventListener('input', () => {
+      this.config.pulseIntensity = parseFloat(this.elements.pulseIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('pulse-intensity-changed', this.config.pulseIntensity);
+    });
+    
+    this.elements.detailIntensitySlider.addEventListener('input', () => {
+      this.config.detailIntensity = parseFloat(this.elements.detailIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('detail-intensity-changed', this.config.detailIntensity);
+    });
+    
+    this.elements.beatIntensitySlider.addEventListener('input', () => {
+      this.config.beatIntensity = parseFloat(this.elements.beatIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('beat-intensity-changed', this.config.beatIntensity);
+    });
+    
+    this.elements.rotationIntensitySlider.addEventListener('input', () => {
+      this.config.rotationIntensity = parseFloat(this.elements.rotationIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('rotation-intensity-changed', this.config.rotationIntensity);
+    });
+    
+    this.elements.flowIntensitySlider.addEventListener('input', () => {
+      this.config.flowIntensity = parseFloat(this.elements.flowIntensitySlider.value);
+      this.updateValueDisplays();
+      this.emit('flow-intensity-changed', this.config.flowIntensity);
+    });
+    
     // Debug controls
     this.elements.nextImageBtn.addEventListener('click', () => {
       this.emit('next-image');
@@ -177,6 +250,14 @@ export class UIController {
     this.elements.silenceThresholdValue.textContent = this.config.silenceRms.toFixed(3);
     this.elements.audioTransitionThresholdValue.textContent = this.config.audioTransitionThreshold.toFixed(1);
     this.elements.audioTransitionHoldValue.textContent = `${this.config.audioTransitionHoldMs}ms`;
+    
+    // Audio-reactive effect value displays
+    this.elements.rippleIntensityValue.textContent = this.config.rippleIntensity.toFixed(1);
+    this.elements.pulseIntensityValue.textContent = this.config.pulseIntensity.toFixed(1);
+    this.elements.detailIntensityValue.textContent = this.config.detailIntensity.toFixed(1);
+    this.elements.beatIntensityValue.textContent = this.config.beatIntensity.toFixed(1);
+    this.elements.rotationIntensityValue.textContent = this.config.rotationIntensity.toFixed(1);
+    this.elements.flowIntensityValue.textContent = this.config.flowIntensity.toFixed(1);
   }
 
   async populateAudioDevices(): Promise<void> {
