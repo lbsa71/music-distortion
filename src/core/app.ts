@@ -267,6 +267,29 @@ export class MusicMosaicApp {
     }
   }
 
+  private generateRandomTileSize(): void {
+    if (this.config.enableRandomTileSize) {
+      // Exponential distribution gravitating toward smaller tiles
+      // 6 is perfect low center, 200 is nice high center
+      const minTileSize = 6;
+      const maxTileSize = 200;
+      
+      // Generate exponential random value (0 to 1)
+      const exponential = -Math.log(Math.random());
+      
+      // Map to tile size range, with bias toward smaller values
+      const normalized = Math.min(exponential / 4.0, 1.0); // Cap at 4 for reasonable distribution
+      const tileSize = Math.round(minTileSize + (maxTileSize - minTileSize) * normalized);
+      
+      this.config.gridTileSize = tileSize;
+      
+      // Update the UI slider
+      this.uiController.updateTileSize(this.config.gridTileSize);
+      
+      console.log('Generated new random tile size:', this.config.gridTileSize);
+    }
+  }
+
   // State machine handlers
   private onFadeInStart(): void {
     this.fadeStartTime = performance.now();
@@ -282,6 +305,7 @@ export class MusicMosaicApp {
   private onTransitionStart(): void {
     this.transitionStartTime = performance.now();
     this.generateRandomIntensities(); // Generate new random intensities for the next image
+    this.generateRandomTileSize(); // Generate new random tile size for the next image
     console.log('Transition started');
   }
 

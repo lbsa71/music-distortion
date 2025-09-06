@@ -25,6 +25,8 @@ export interface AppConfig {
   flowIntensity: number;
   // Random intensity cycling
   enableRandomIntensities: boolean;
+  // Random grid tile size
+  enableRandomTileSize: boolean;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -52,6 +54,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   flowIntensity: 1.0,
   // Random intensity cycling
   enableRandomIntensities: true,
+  // Random grid tile size
+  enableRandomTileSize: true,
 };
 
 export interface TileUniforms {

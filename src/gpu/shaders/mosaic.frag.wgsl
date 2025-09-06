@@ -124,13 +124,16 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   
   // Create colored gradient overlays moving over the images
   let ambientLight = createAmbientLighting(input.uv, time, audioIntensity);
+  let energyRays = createEnergyRays(input.uv, time, audioIntensity);
   
   // Tone-weighted screen blend: vivid swatches, preserve detail, avoid white clipping
   let luma = dot(blendedColor.rgb, vec3<f32>(0.299, 0.587, 0.114));
   let toneWeight = clamp(pow(luma, 0.5), 0.0, 1.0); // more weight on highlights, some on midtones
-  let minContribution = 0.15;                       // ensure visibility even on darker areas
-  let overlayStrength = 0.9;                        // strong but not blowing out
-  let overlay = ambientLight * overlayStrength * mix(minContribution, 1.0, toneWeight);
+  let minContribution = 0.08;                       // subtle base so midtones still get some color
+  let overlayStrength = 0.95;                       // strong but not blowing out
+  let blackMask = smoothstep(0.02, 0.08, luma);     // keep true blacks black (no rectangles)
+  let overlaySource = ambientLight + energyRays;
+  let overlay = overlaySource * overlayStrength * mix(minContribution, 1.0, toneWeight) * blackMask;
   let screenBlend = 1.0 - (1.0 - blendedColor.rgb) * (1.0 - overlay);
   let finalColor = clamp(screenBlend, vec3<f32>(0.0), vec3<f32>(1.0));
   
@@ -148,29 +151,29 @@ fn createAmbientLighting(uv: vec2<f32>, time: f32, audioIntensity: f32) -> vec3<
   // Create multiple moving light patches - much more intense
   var ambientColor = vec3<f32>(0.0);
   
-  // Purple field - slow horizontal movement - MUCH MORE INTENSE
-  let purplePhase = time * 0.3 + uv.x * 2.0;
+  // Purple field - slow horizontal movement - audio-synced speed
+  let purplePhase = time * (0.2 + audioIntensity * 1.2) + uv.x * 2.0;
   let purpleIntensity = sin(purplePhase) * 0.5 + 0.5;
   let purpleDistance = length(uv - vec2<f32>(0.3 + sin(time * 0.2) * 0.2, 0.5));
   let purpleSpot = exp(-purpleDistance * 1.2) * purpleIntensity * 1.5; // Larger, brighter
   ambientColor += purple * purpleSpot;
   
-  // Mauve field - vertical movement - MUCH MORE INTENSE
-  let mauvePhase = time * 0.4 + uv.y * 1.5;
+  // Mauve field - vertical movement - audio-synced speed
+  let mauvePhase = time * (0.25 + audioIntensity * 1.4) + uv.y * 1.5;
   let mauveIntensity = cos(mauvePhase) * 0.5 + 0.5;
   let mauveDistance = length(uv - vec2<f32>(0.7, 0.3 + cos(time * 0.25) * 0.3));
   let mauveSpot = exp(-mauveDistance * 1.0) * mauveIntensity * 1.2; // Larger, brighter
   ambientColor += mauve * mauveSpot;
   
-  // Orange field - diagonal movement - MUCH MORE INTENSE
-  let orangePhase = time * 0.35 + (uv.x + uv.y) * 1.8;
+  // Orange field - diagonal movement - audio-synced speed
+  let orangePhase = time * (0.3 + audioIntensity * 1.3) + (uv.x + uv.y) * 1.8;
   let orangeIntensity = sin(orangePhase) * 0.5 + 0.5;
   let orangeDistance = length(uv - vec2<f32>(0.2 + sin(time * 0.3) * 0.4, 0.8 + cos(time * 0.3) * 0.2));
   let orangeSpot = exp(-orangeDistance * 0.8) * orangeIntensity * 1.3; // Larger, brighter
   ambientColor += orange * orangeSpot;
   
-  // Cyan field - circular movement - MUCH MORE INTENSE
-  let cyanPhase = time * 0.25 + length(uv - vec2<f32>(0.5, 0.5)) * 3.0;
+  // Cyan field - circular movement - audio-synced speed
+  let cyanPhase = time * (0.2 + audioIntensity * 1.0) + length(uv - vec2<f32>(0.5, 0.5)) * 3.0;
   let cyanIntensity = cos(cyanPhase) * 0.5 + 0.5;
   let cyanCenter = vec2<f32>(0.5, 0.5) + vec2<f32>(sin(time * 0.15), cos(time * 0.15)) * 0.3;
   let cyanDistance = length(uv - cyanCenter);
@@ -186,4 +189,44 @@ fn createAmbientLighting(uv: vec2<f32>, time: f32, audioIntensity: f32) -> vec3<
   ambientColor += globalAmbient;
   
   return ambientColor;
+}
+
+fn createEnergyRays(uv: vec2<f32>, time: f32, energy: f32) -> vec3<f32> {
+  // Make rays VERY visible - bright shooting stars
+  let speed = mix(1.0, 4.0, energy);
+  let intensity = mix(1.5, 4.0, energy); // Much brighter
+  let width = 0.02; // Much wider rays
+  
+  var rays = vec3<f32>(0.0);
+  
+  // Create 4 bright rays
+  for (var i: u32 = 0u; i < 4u; i = i + 1u) {
+    let fi = f32(i);
+    let seed = hash(vec2<f32>(fi * 17.23, 91.7));
+    let centerX = fract(seed * 13.37);
+    let phase = fract(seed * 7.31);
+    
+    // Upward-moving head
+    let headY = fract(time * speed + phase);
+    
+    // Very wide lateral falloff
+    let dx = abs(uv.x - centerX);
+    let xMask = exp(-pow(dx / width, 1.0)); // Very soft falloff
+    
+    // Long tail below head
+    let below = step(uv.y, headY);
+    let tail = max(0.0, headY - uv.y);
+    let yMask = exp(-tail * 4.0) * below; // Very long tail
+    
+    // Bright head glow
+    let headGlow = exp(-abs(uv.y - headY) * 15.0);
+    
+    // Very bright white
+    let tint = vec3<f32>(1.2, 1.1, 1.0); // Overbright
+    
+    let contrib = (xMask * (0.5 * yMask + 0.5 * headGlow)) * intensity;
+    rays += tint * contrib;
+  }
+  
+  return clamp(rays, vec3<f32>(0.0), vec3<f32>(3.0));
 }

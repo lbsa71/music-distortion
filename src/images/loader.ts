@@ -67,7 +67,8 @@ export class ImageLoader {
         'image1.png',
         'image2.png', 
         'image3.png',
-        'image4.png'
+        'image4.png',
+        'image5.png'
       ];
       
       console.log('Scanning for local images...');

@@ -448,6 +448,11 @@ export class UIController {
     this.updateValueDisplays();
   }
 
+  updateTileSize(tileSize: number): void {
+    this.elements.tileSizeSlider.value = tileSize.toString();
+    this.updateValueDisplays();
+  }
+
   getConfig(): AppConfig {
     return { ...this.config };
   }
