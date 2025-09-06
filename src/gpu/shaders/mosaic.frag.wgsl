@@ -41,7 +41,7 @@ fn curlNoise(p: vec2<f32>) -> vec2<f32> {
 }
 
 @fragment
-fn main(input: FSInput) -> @location(0) vec4<f32> {
+fn main(input: FSInput, @builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
   // Read audio bands from FFT texture
   let bands = textureLoad(fftTex, vec2<i32>(0, 0), 0).rgb;
   let low = bands.r;
@@ -124,7 +124,9 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   
   // Create colored gradient overlays moving over the images
   let ambientLight = createAmbientLighting(input.uv, time, audioIntensity);
-  let energyRays = createEnergyRays(input.uv, time, audioIntensity);
+  
+  // Shooting stars moved to separate canvas layer
+  let energyRays = vec3<f32>(0.0);
   
   // Tone-weighted screen blend: vivid swatches, preserve detail, avoid white clipping
   let luma = dot(blendedColor.rgb, vec3<f32>(0.299, 0.587, 0.114));
@@ -132,10 +134,13 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   let minContribution = 0.08;                       // subtle base so midtones still get some color
   let overlayStrength = 0.95;                       // strong but not blowing out
   let blackMask = smoothstep(0.02, 0.08, luma);     // keep true blacks black (no rectangles)
-  let overlaySource = ambientLight + energyRays;
+  let overlaySource = ambientLight; // Only ambient lighting, not rays
   let overlay = overlaySource * overlayStrength * mix(minContribution, 1.0, toneWeight) * blackMask;
   let screenBlend = 1.0 - (1.0 - blendedColor.rgb) * (1.0 - overlay);
-  let finalColor = clamp(screenBlend, vec3<f32>(0.0), vec3<f32>(1.0));
+  
+  // Add shooting stars as separate top layer (always visible, not masked)
+  let starsLayer = energyRays * 0.8; // Slightly dimmed for better integration
+  let finalColor = clamp(screenBlend + starsLayer, vec3<f32>(0.0), vec3<f32>(1.0));
   
   // Apply global alpha for fade in/out
   return vec4<f32>(finalColor, 1.0) * uniforms.alpha;

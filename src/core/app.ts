@@ -7,9 +7,11 @@ import { initializeWebGPU, checkWebGPUFeatures } from '../gpu/device.js';
 import { WebGPURenderer } from '../gpu/renderer-webgpu.js';
 import { WebGL2Renderer } from '../gpu/fallback-webgl.js';
 import { UIController } from '../ui/controls.js';
+import { WebGPUEnergyRaysRenderer } from '../gpu/webgpu-energy-rays.js';
 
 export class MusicMosaicApp {
   private canvas: HTMLCanvasElement;
+  private starsCanvas: HTMLCanvasElement;
   private config: AppConfig;
   private stateMachine: StateMachine;
   private uiController: UIController;
@@ -19,6 +21,7 @@ export class MusicMosaicApp {
   private audioStream: MediaStream | null = null;
   private imageLoader: ImageLoader;
   private renderer: WebGPURenderer | WebGL2Renderer | null = null;
+  private energyRaysRenderer: WebGPUEnergyRaysRenderer | null = null;
   
   // State
   private isRunning = false;
@@ -42,6 +45,10 @@ export class MusicMosaicApp {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.starsCanvas = document.getElementById('stars-canvas') as HTMLCanvasElement;
+    if (!this.starsCanvas) {
+      throw new Error('Stars canvas not found');
+    }
     this.config = { ...DEFAULT_CONFIG };
     this.stateMachine = new StateMachine();
     this.uiController = new UIController(this.config);
@@ -76,6 +83,36 @@ export class MusicMosaicApp {
       console.log('Step 4: Transitioning to IDLE state...');
       this.stateMachine.transitionTo('IDLE');
       console.log('✓ State transitioned to IDLE');
+      
+      // Initialize energy rays renderer with separate WebGPU device
+      console.log('Step 5: Initializing energy rays renderer...');
+      const webgpuFeatures = await checkWebGPUFeatures();
+      console.log('WebGPU features:', webgpuFeatures);
+      console.log('Renderer type:', this.renderer?.constructor.name);
+      
+      if (webgpuFeatures.supported && this.renderer instanceof WebGPURenderer) {
+        try {
+          console.log('Creating separate WebGPU adapter...');
+          const adapter = await navigator.gpu.requestAdapter();
+          if (adapter) {
+            console.log('Adapter created, requesting device...');
+            const device = await adapter.requestDevice();
+            console.log('Device created, initializing energy rays renderer...');
+            this.energyRaysRenderer = new WebGPUEnergyRaysRenderer(device, this.starsCanvas);
+            await this.energyRaysRenderer.initialize();
+            console.log('Energy rays renderer initialized, starting...');
+            this.energyRaysRenderer.start();
+            console.log('✓ WebGPU energy rays renderer initialized with separate device');
+          } else {
+            console.log('⚠ Failed to get WebGPU adapter for energy rays');
+          }
+        } catch (error) {
+          console.error('Error initializing energy rays renderer:', error);
+          this.energyRaysRenderer = null;
+        }
+      } else {
+        console.log('⚠ WebGPU not supported or main renderer not WebGPU, skipping energy rays');
+      }
       
       console.log('App initialized successfully');
     } catch (error) {
@@ -140,6 +177,11 @@ export class MusicMosaicApp {
     
     if (this.renderer) {
       this.renderer.resize(width, height);
+    }
+    
+    // Also resize energy rays canvas
+    if (this.energyRaysRenderer) {
+      this.energyRaysRenderer.handleResize();
     }
   }
 
@@ -459,6 +501,13 @@ export class MusicMosaicApp {
     
     // Calculate combined audio intensity (RMS + band energy)
     const combinedIntensity = rms + (audioBands.low + audioBands.mid + audioBands.high) / 3;
+    
+    // Pass audio data to energy rays renderer
+    if (this.energyRaysRenderer) {
+      this.energyRaysRenderer.setAudioData({
+        intensity: combinedIntensity
+      });
+    }
     
     if (combinedIntensity >= this.config.audioTransitionThreshold) {
       // Above threshold - start counting

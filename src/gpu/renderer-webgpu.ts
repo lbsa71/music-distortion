@@ -21,6 +21,10 @@ export class WebGPURenderer {
     this.bufferManager = new BufferManager(deviceInfo);
   }
 
+  get device(): GPUDevice {
+    return this.deviceInfo.device;
+  }
+
   async initialize(): Promise<void> {
     try {
       this.pipelines = await createPipelines(this.deviceInfo);

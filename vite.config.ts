@@ -21,5 +21,6 @@ export default defineConfig({
     alias: {
       '@': '/src'
     }
-  }
+  },
+  assetsInclude: ['**/*.wgsl']
 });
