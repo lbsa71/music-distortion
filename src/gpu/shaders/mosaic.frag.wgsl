@@ -115,13 +115,73 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   // Clamp to valid UV range
   distortedUV = clamp(distortedUV, vec2<f32>(0.0), vec2<f32>(1.0));
   
-  // Sample textures
-  let currentColor = textureSample(currentTex, texSampler, distortedUV);
-  let nextColor = textureSample(nextTex, texSampler, distortedUV);
+  // Sample textures using original UV for pure images (no distortion)
+  let currentColor = textureSample(currentTex, texSampler, input.uv);
+  let nextColor = textureSample(nextTex, texSampler, input.uv);
   
   // Transition blend (uniforms.alpha controls transition progress)
   let blendedColor = mix(currentColor, nextColor, uniforms.alpha);
   
+  // Create colored gradient overlays moving over the images
+  let ambientLight = createAmbientLighting(input.uv, time, audioIntensity);
+  
+  // Calculate brightness of the image to create a mask
+  let imageBrightness = (blendedColor.r + blendedColor.g + blendedColor.b) / 3.0;
+  
+  // Only apply colors to white/bright areas, keep black areas black
+  let colorMask = smoothstep(0.0, 0.3, imageBrightness); // Much more lenient threshold
+  let finalColor = blendedColor.rgb + (ambientLight * colorMask);
+  
   // Apply global alpha for fade in/out
-  return vec4<f32>(blendedColor.rgb, 1.0) * uniforms.alpha;
+  return vec4<f32>(finalColor, 1.0) * uniforms.alpha;
+}
+
+fn createAmbientLighting(uv: vec2<f32>, time: f32, audioIntensity: f32) -> vec3<f32> {
+  // Vibrant color palette for projection - much more saturated
+  let purple = vec3<f32>(0.8, 0.2, 1.0);
+  let mauve = vec3<f32>(0.9, 0.4, 0.8);
+  let orange = vec3<f32>(1.0, 0.4, 0.1);
+  let cyan = vec3<f32>(0.1, 0.9, 1.0);
+  
+  // Create multiple moving light patches - much more intense
+  var ambientColor = vec3<f32>(0.0);
+  
+  // Purple field - slow horizontal movement
+  let purplePhase = time * 0.3 + uv.x * 2.0;
+  let purpleIntensity = sin(purplePhase) * 0.5 + 0.5;
+  let purpleDistance = length(uv - vec2<f32>(0.3 + sin(time * 0.2) * 0.2, 0.5));
+  let purpleSpot = exp(-purpleDistance * 2.0) * purpleIntensity * 0.4;
+  ambientColor += purple * purpleSpot;
+  
+  // Mauve field - vertical movement
+  let mauvePhase = time * 0.4 + uv.y * 1.5;
+  let mauveIntensity = cos(mauvePhase) * 0.5 + 0.5;
+  let mauveDistance = length(uv - vec2<f32>(0.7, 0.3 + cos(time * 0.25) * 0.3));
+  let mauveSpot = exp(-mauveDistance * 1.8) * mauveIntensity * 0.3;
+  ambientColor += mauve * mauveSpot;
+  
+  // Orange field - diagonal movement
+  let orangePhase = time * 0.35 + (uv.x + uv.y) * 1.8;
+  let orangeIntensity = sin(orangePhase) * 0.5 + 0.5;
+  let orangeDistance = length(uv - vec2<f32>(0.2 + sin(time * 0.3) * 0.4, 0.8 + cos(time * 0.3) * 0.2));
+  let orangeSpot = exp(-orangeDistance * 1.5) * orangeIntensity * 0.35;
+  ambientColor += orange * orangeSpot;
+  
+  // Cyan field - circular movement
+  let cyanPhase = time * 0.25 + length(uv - vec2<f32>(0.5, 0.5)) * 3.0;
+  let cyanIntensity = cos(cyanPhase) * 0.5 + 0.5;
+  let cyanCenter = vec2<f32>(0.5, 0.5) + vec2<f32>(sin(time * 0.15), cos(time * 0.15)) * 0.3;
+  let cyanDistance = length(uv - cyanCenter);
+  let cyanSpot = exp(-cyanDistance * 1.8) * cyanIntensity * 0.3;
+  ambientColor += cyan * cyanSpot;
+  
+  // Add audio-reactive pulsing to all fields
+  let audioPulse = 1.0 + audioIntensity * 0.8;
+  ambientColor *= audioPulse;
+  
+  // Light overall ambient glow for additive blending
+  let globalAmbient = (purple + mauve + orange + cyan) * 0.1;
+  ambientColor += globalAmbient;
+  
+  return ambientColor;
 }

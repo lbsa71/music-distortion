@@ -191,7 +191,9 @@ export class UIController {
     });
     
     this.elements.audioInputSelect.addEventListener('change', () => {
-      this.emit('audio-device-changed', this.elements.audioInputSelect.value);
+      const deviceId = this.elements.audioInputSelect.value;
+      this.saveAudioDeviceSelection(deviceId);
+      this.emit('audio-device-changed', deviceId);
     });
     
     // Visual controls with live updates
@@ -336,6 +338,9 @@ export class UIController {
         this.elements.audioInputSelect.appendChild(option);
       });
       
+      // Restore saved audio device selection
+      this.restoreAudioDeviceSelection();
+      
       console.log(`Populated ${devices.length} audio devices`);
     } catch (error) {
       console.error('Error populating audio devices:', error);
@@ -345,6 +350,35 @@ export class UIController {
   private clearAudioDeviceOptions(): void {
     while (this.elements.audioInputSelect.firstChild) {
       this.elements.audioInputSelect.removeChild(this.elements.audioInputSelect.firstChild);
+    }
+  }
+
+  private saveAudioDeviceSelection(deviceId: string): void {
+    try {
+      localStorage.setItem('music-mosaic-audio-device', deviceId);
+      console.log('Saved audio device selection:', deviceId);
+    } catch (error) {
+      console.error('Error saving audio device selection:', error);
+    }
+  }
+
+  private restoreAudioDeviceSelection(): void {
+    try {
+      const savedDeviceId = localStorage.getItem('music-mosaic-audio-device');
+      if (savedDeviceId !== null) {
+        // Check if the saved device still exists in the options
+        const optionExists = Array.from(this.elements.audioInputSelect.options)
+          .some(option => option.value === savedDeviceId);
+        
+        if (optionExists) {
+          this.elements.audioInputSelect.value = savedDeviceId;
+          console.log('Restored audio device selection:', savedDeviceId);
+        } else {
+          console.log('Saved audio device no longer available, using default');
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring audio device selection:', error);
     }
   }
 
