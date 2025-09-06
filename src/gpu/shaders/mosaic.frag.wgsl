@@ -53,7 +53,7 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   let time = uniforms.time;
   
   // Calculate audio intensity for different effects
-  let audioIntensity = (low + mid + high) / 3.0;
+  let audioIntensity = max((low + mid + high) / 3.0, 0.3); // Ensure minimum intensity for colors to show even without audio
   let bassIntensity = low;
   let trebleIntensity = high;
   
@@ -125,12 +125,14 @@ fn main(input: FSInput) -> @location(0) vec4<f32> {
   // Create colored gradient overlays moving over the images
   let ambientLight = createAmbientLighting(input.uv, time, audioIntensity);
   
-  // Calculate brightness of the image to create a mask
-  let imageBrightness = (blendedColor.r + blendedColor.g + blendedColor.b) / 3.0;
-  
-  // Only apply colors to white/bright areas, keep black areas black
-  let colorMask = smoothstep(0.0, 0.3, imageBrightness); // Much more lenient threshold
-  let finalColor = blendedColor.rgb + (ambientLight * colorMask);
+  // Tone-weighted screen blend: vivid swatches, preserve detail, avoid white clipping
+  let luma = dot(blendedColor.rgb, vec3<f32>(0.299, 0.587, 0.114));
+  let toneWeight = clamp(pow(luma, 0.5), 0.0, 1.0); // more weight on highlights, some on midtones
+  let minContribution = 0.15;                       // ensure visibility even on darker areas
+  let overlayStrength = 0.9;                        // strong but not blowing out
+  let overlay = ambientLight * overlayStrength * mix(minContribution, 1.0, toneWeight);
+  let screenBlend = 1.0 - (1.0 - blendedColor.rgb) * (1.0 - overlay);
+  let finalColor = clamp(screenBlend, vec3<f32>(0.0), vec3<f32>(1.0));
   
   // Apply global alpha for fade in/out
   return vec4<f32>(finalColor, 1.0) * uniforms.alpha;
@@ -146,41 +148,41 @@ fn createAmbientLighting(uv: vec2<f32>, time: f32, audioIntensity: f32) -> vec3<
   // Create multiple moving light patches - much more intense
   var ambientColor = vec3<f32>(0.0);
   
-  // Purple field - slow horizontal movement
+  // Purple field - slow horizontal movement - MUCH MORE INTENSE
   let purplePhase = time * 0.3 + uv.x * 2.0;
   let purpleIntensity = sin(purplePhase) * 0.5 + 0.5;
   let purpleDistance = length(uv - vec2<f32>(0.3 + sin(time * 0.2) * 0.2, 0.5));
-  let purpleSpot = exp(-purpleDistance * 2.0) * purpleIntensity * 0.4;
+  let purpleSpot = exp(-purpleDistance * 1.2) * purpleIntensity * 1.5; // Larger, brighter
   ambientColor += purple * purpleSpot;
   
-  // Mauve field - vertical movement
+  // Mauve field - vertical movement - MUCH MORE INTENSE
   let mauvePhase = time * 0.4 + uv.y * 1.5;
   let mauveIntensity = cos(mauvePhase) * 0.5 + 0.5;
   let mauveDistance = length(uv - vec2<f32>(0.7, 0.3 + cos(time * 0.25) * 0.3));
-  let mauveSpot = exp(-mauveDistance * 1.8) * mauveIntensity * 0.3;
+  let mauveSpot = exp(-mauveDistance * 1.0) * mauveIntensity * 1.2; // Larger, brighter
   ambientColor += mauve * mauveSpot;
   
-  // Orange field - diagonal movement
+  // Orange field - diagonal movement - MUCH MORE INTENSE
   let orangePhase = time * 0.35 + (uv.x + uv.y) * 1.8;
   let orangeIntensity = sin(orangePhase) * 0.5 + 0.5;
   let orangeDistance = length(uv - vec2<f32>(0.2 + sin(time * 0.3) * 0.4, 0.8 + cos(time * 0.3) * 0.2));
-  let orangeSpot = exp(-orangeDistance * 1.5) * orangeIntensity * 0.35;
+  let orangeSpot = exp(-orangeDistance * 0.8) * orangeIntensity * 1.3; // Larger, brighter
   ambientColor += orange * orangeSpot;
   
-  // Cyan field - circular movement
+  // Cyan field - circular movement - MUCH MORE INTENSE
   let cyanPhase = time * 0.25 + length(uv - vec2<f32>(0.5, 0.5)) * 3.0;
   let cyanIntensity = cos(cyanPhase) * 0.5 + 0.5;
   let cyanCenter = vec2<f32>(0.5, 0.5) + vec2<f32>(sin(time * 0.15), cos(time * 0.15)) * 0.3;
   let cyanDistance = length(uv - cyanCenter);
-  let cyanSpot = exp(-cyanDistance * 1.8) * cyanIntensity * 0.3;
+  let cyanSpot = exp(-cyanDistance * 1.0) * cyanIntensity * 1.2; // Larger, brighter
   ambientColor += cyan * cyanSpot;
   
-  // Add audio-reactive pulsing to all fields
-  let audioPulse = 1.0 + audioIntensity * 0.8;
+  // Add audio-reactive pulsing to all fields - MUCH STRONGER
+  let audioPulse = 1.0 + audioIntensity * 1.5;
   ambientColor *= audioPulse;
   
-  // Light overall ambient glow for additive blending
-  let globalAmbient = (purple + mauve + orange + cyan) * 0.1;
+  // Stronger overall ambient glow for projection
+  let globalAmbient = (purple + mauve + orange + cyan) * 0.2;
   ambientColor += globalAmbient;
   
   return ambientColor;

@@ -64,7 +64,10 @@ export class ImageLoader {
       
       // Try to load some common image filenames
       const testFiles = [
-        'image1.png'
+        'image1.png',
+        'image2.png', 
+        'image3.png',
+        'image4.png'
       ];
       
       console.log('Scanning for local images...');
