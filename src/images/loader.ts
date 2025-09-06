@@ -12,9 +12,15 @@ export class ImageLoader {
 
   async initialize(): Promise<void> {
     try {
-      const response = await fetch('./images.json');
-      this.imageUrls = await response.json();
-      console.log(`Loaded ${this.imageUrls.length} image URLs`);
+      // First try to load from local images folder
+      await this.loadLocalImages();
+      
+      // If no local images found, try images.json as fallback
+      if (this.imageUrls.length === 0) {
+        const response = await fetch('./images.json');
+        this.imageUrls = await response.json();
+        console.log(`Loaded ${this.imageUrls.length} image URLs from images.json`);
+      }
     } catch (error) {
       console.error('Error loading image URLs:', error);
       // Fallback to default images if loading fails
@@ -47,6 +53,45 @@ export class ImageLoader {
         
         this.imageUrls.push(canvas.toDataURL());
       }
+    }
+  }
+
+  private async loadLocalImages(): Promise<void> {
+    try {
+      // Try to fetch a directory listing from the images folder
+      // This is a simple approach - in a real app you might want to use a proper file server
+      const imageFiles: string[] = [];
+      
+      // Try to load some common image filenames
+      const testFiles = [
+        'image1.png'
+      ];
+      
+      console.log('Scanning for local images...');
+      
+      for (const filename of testFiles) {
+        try {
+          console.log(`Checking for image: ./images/${filename}`);
+          const response = await fetch(`./images/${filename}`);
+          if (response.ok) {
+            console.log(`✓ Found image: ${filename}`);
+            imageFiles.push(`./images/${filename}`);
+          } else {
+            console.log(`✗ Image not found: ${filename} (${response.status})`);
+          }
+        } catch (error) {
+          console.log(`✗ Error checking ${filename}:`, error);
+        }
+      }
+      
+      if (imageFiles.length > 0) {
+        this.imageUrls = imageFiles;
+        console.log(`Found ${this.imageUrls.length} local images in ./images/ folder`);
+      } else {
+        console.log('No local images found in ./images/ folder');
+      }
+    } catch (error) {
+      console.log('Could not scan local images folder:', error);
     }
   }
 

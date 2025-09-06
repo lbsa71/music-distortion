@@ -1,4 +1,4 @@
-import { AudioBands, AppConfig } from '../core/config.js';
+import { AudioBands, DetailedAudioData, AppConfig } from '../core/config.js';
 
 export class AudioAnalyzer {
   private audioContext: AudioContext | null = null;
@@ -52,6 +52,108 @@ export class AudioAnalyzer {
       console.error('Error initializing audio analyzer:', error);
       throw error;
     }
+  }
+
+  getDetailedAudioData(): DetailedAudioData {
+    if (!this.analyser || !this.isActive) {
+      console.log('Audio analyzer not active or analyser missing');
+      return {
+        bands: { low: 0, mid: 0, high: 0 },
+        frequencySpectrum: new Float32Array(0),
+        beatDetected: false,
+        spectralCentroid: 0,
+        spectralRolloff: 0
+      };
+    }
+
+    const fftData = new Float32Array(this.fftBuffer.length);
+    this.analyser.getFloatFrequencyData(fftData);
+    
+    const sampleRate = this.audioContext!.sampleRate;
+    const binCount = fftData.length;
+    const binSize = sampleRate / 2 / binCount;
+    
+    // Map frequency ranges to bin indices
+    const lowStart = Math.floor(this.config.lowBand[0] / binSize);
+    const lowEnd = Math.floor(this.config.lowBand[1] / binSize);
+    const midStart = Math.floor(this.config.midBand[0] / binSize);
+    const midEnd = Math.floor(this.config.midBand[1] / binSize);
+    const highStart = Math.floor(this.config.highBand[0] / binSize);
+    const highEnd = Math.floor(this.config.highBand[1] / binSize);
+    
+    // Calculate band energies (convert from dB to linear)
+    let lowSum = 0, midSum = 0, highSum = 0;
+    let lowCount = 0, midCount = 0, highCount = 0;
+    
+    for (let i = lowStart; i <= lowEnd && i < binCount; i++) {
+      lowSum += Math.pow(10, fftData[i] / 20);
+      lowCount++;
+    }
+    
+    for (let i = midStart; i <= midEnd && i < binCount; i++) {
+      midSum += Math.pow(10, fftData[i] / 20);
+      midCount++;
+    }
+    
+    for (let i = highStart; i <= highEnd && i < binCount; i++) {
+      highSum += Math.pow(10, fftData[i] / 20);
+      highCount++;
+    }
+    
+    // Average and normalize
+    const low = lowCount > 0 ? lowSum / lowCount : 0;
+    const mid = midCount > 0 ? midSum / midCount : 0;
+    const high = highCount > 0 ? highSum / highCount : 0;
+    
+    // Apply EMA smoothing
+    this.lowEma = this.lowEma * (1 - this.emaAlpha) + low * this.emaAlpha;
+    this.midEma = this.midEma * (1 - this.emaAlpha) + mid * this.emaAlpha;
+    this.highEma = this.highEma * (1 - this.emaAlpha) + high * this.emaAlpha;
+    
+    // Scale up the values to make them more visible
+    const scale = 1000;
+    
+    const bands = {
+      low: Math.min(this.lowEma * scale, 1.0),
+      mid: Math.min(this.midEma * scale, 1.0),
+      high: Math.min(this.highEma * scale, 1.0),
+    };
+    
+    // Calculate spectral centroid (brightness of sound)
+    let weightedSum = 0;
+    let magnitudeSum = 0;
+    for (let i = 0; i < binCount; i++) {
+      const magnitude = Math.pow(10, fftData[i] / 20);
+      const frequency = i * binSize;
+      weightedSum += frequency * magnitude;
+      magnitudeSum += magnitude;
+    }
+    const spectralCentroid = magnitudeSum > 0 ? weightedSum / magnitudeSum : 0;
+    
+    // Calculate spectral rolloff (frequency below which 85% of energy lies)
+    let cumulativeEnergy = 0;
+    const totalEnergy = magnitudeSum;
+    let spectralRolloff = 0;
+    for (let i = 0; i < binCount; i++) {
+      const magnitude = Math.pow(10, fftData[i] / 20);
+      cumulativeEnergy += magnitude;
+      if (cumulativeEnergy >= totalEnergy * 0.85) {
+        spectralRolloff = i * binSize;
+        break;
+      }
+    }
+    
+    // Simple beat detection based on energy spikes
+    const currentEnergy = (bands.low + bands.mid + bands.high) / 3.0;
+    const beatDetected = currentEnergy > 0.3 && currentEnergy > this.lastRms * 1.5;
+    
+    return {
+      bands,
+      frequencySpectrum: fftData,
+      beatDetected,
+      spectralCentroid: spectralCentroid / 1000, // Normalize
+      spectralRolloff: spectralRolloff / 1000 // Normalize
+    };
   }
 
   getAudioBands(): AudioBands {

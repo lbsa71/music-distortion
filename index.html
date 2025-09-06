@@ -9,7 +9,23 @@
   <body>
     <div id="app">
       <canvas id="canvas"></canvas>
-      <div id="controls">
+      
+      <!-- Settings Toggle Button -->
+      <button id="settings-toggle" class="settings-cog">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m15.5-6.5l-4.24 4.24M6.74 6.74L2.5 2.5m15.5 15.5l-4.24-4.24M6.74 17.26L2.5 21.5"></path>
+        </svg>
+      </button>
+      
+      <!-- Collapsible Settings Modal -->
+      <div id="settings-modal" class="settings-modal hidden">
+        <div id="settings-content">
+          <div class="settings-header">
+            <h3>Settings</h3>
+            <button id="settings-close" class="close-btn">&times;</button>
+          </div>
+          <div id="controls">
         <div id="audio-controls">
           <label>
             Audio Input:
@@ -117,6 +133,7 @@
             <div>Low: <span id="low-band">0.0</span></div>
             <div>Mid: <span id="mid-band">0.0</span></div>
             <div>High: <span id="high-band">0.0</span></div>
+          </div>
           </div>
         </div>
       </div>

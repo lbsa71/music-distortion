@@ -76,6 +76,14 @@ export interface AudioBands {
   high: number;
 }
 
+export interface DetailedAudioData {
+  bands: AudioBands;
+  frequencySpectrum: Float32Array;
+  beatDetected: boolean;
+  spectralCentroid: number;
+  spectralRolloff: number;
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }

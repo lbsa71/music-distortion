@@ -3,7 +3,7 @@ import { TextureManager } from './textures.js';
 import { BufferManager } from './buffers.js';
 import { createPipelines, PipelineResources } from './pipelines.js';
 import { LoadedImage } from '../images/loader.js';
-import { TileUniforms, AudioBands } from '../core/config.js';
+import { TileUniforms, AudioBands, DetailedAudioData } from '../core/config.js';
 
 export class WebGPURenderer {
   private deviceInfo: GPUDeviceInfo;
@@ -168,6 +168,14 @@ export class WebGPURenderer {
     // Update uniforms
     this.bufferManager.updateUniforms(uniforms);
     
+    // Update per-tile audio movement
+    this.bufferManager.updateInstanceAudioMovement(
+      uniforms.cols,
+      uniforms.rows,
+      audioBands,
+      uniforms.time
+    );
+    
     // Update FFT data
     this.textureManager.updateFftData(audioBands.low, audioBands.mid, audioBands.high);
 
@@ -241,6 +249,93 @@ export class WebGPURenderer {
   swapTextures(): void {
     this.textureManager.swapTextures();
     this.updateBindGroups();
+  }
+
+  renderWithDetailedAudio(uniforms: TileUniforms, detailedAudio: DetailedAudioData): void {
+    if (!this.isValidForRendering()) {
+      console.warn('Renderer not ready for rendering, skipping frame');
+      return;
+    }
+
+    // Update uniforms
+    this.bufferManager.updateUniforms(uniforms);
+    
+    // Update per-tile audio movement with detailed audio data
+    this.bufferManager.updateInstanceDetailedAudioMovement(
+      uniforms.cols,
+      uniforms.rows,
+      detailedAudio,
+      uniforms.time
+    );
+    
+    // Update FFT data
+    this.textureManager.updateFftData(detailedAudio.bands.low, detailedAudio.bands.mid, detailedAudio.bands.high);
+
+    try {
+      // Get command encoder
+      const commandEncoder = this.deviceInfo.device.createCommandEncoder({
+        label: 'Render Command Encoder'
+      });
+
+      // Run grayscale compute pass (if needed)
+      if (this.grayscaleBindGroup) {
+        const computePass = commandEncoder.beginComputePass({
+          label: 'Grayscale Compute Pass'
+        });
+        
+        computePass.setPipeline(this.pipelines!.grayscaleComputePipeline);
+        computePass.setBindGroup(0, this.grayscaleBindGroup);
+        
+        // Dispatch compute shader
+        const workgroupsX = Math.ceil(uniforms.imgW / 16);
+        const workgroupsY = Math.ceil(uniforms.imgH / 16);
+        computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+        
+        computePass.end();
+      }
+
+      // Render pass
+      const renderPass = commandEncoder.beginRenderPass({
+        label: 'Mosaic Render Pass',
+        colorAttachments: [
+          {
+            view: this.deviceInfo.context.getCurrentTexture().createView(),
+            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+            loadOp: 'clear',
+            storeOp: 'store',
+          },
+        ],
+      });
+
+      renderPass.setPipeline(this.pipelines!.mosaicRenderPipeline);
+      renderPass.setBindGroup(0, this.uniformBindGroup);
+      
+      // Only set texture bind group if it exists
+      if (this.textureBindGroup) {
+        console.log('Setting texture bind group in render pass');
+        renderPass.setBindGroup(1, this.textureBindGroup);
+      } else {
+        console.warn('No texture bind group available for render pass');
+      }
+
+      const vertexBuffer = this.bufferManager.getVertexBuffer();
+      if (vertexBuffer) {
+        renderPass.setVertexBuffer(0, vertexBuffer);
+        
+        // Draw instanced tiles
+        const tileCount = this.bufferManager.getTileCount();
+        renderPass.draw(6, tileCount); // 6 vertices per quad, instanced
+      }
+
+      renderPass.end();
+
+      // Submit commands
+      this.deviceInfo.device.queue.submit([commandEncoder.finish()]);
+    } catch (error) {
+      console.error('Error during render:', error);
+      // Try to recreate bind groups on render error
+      this.updateBindGroups();
+    }
   }
 
   resize(width: number, height: number): void {

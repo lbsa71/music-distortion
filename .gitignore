@@ -80,3 +80,4 @@ jspm_packages/
 .dynamodb/
 
 node_modules/
+dist/

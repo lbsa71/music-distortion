@@ -62,13 +62,13 @@ export async function initializeWebGPU(canvas: HTMLCanvasElement): Promise<GPUDe
       if (event.error instanceof GPUValidationError) {
         console.error('Validation error details:', {
           message: event.error.message,
-          stack: event.error.stack
+          stack: (event.error as any).stack
         });
       }
     });
 
     // Handle device loss
-    device.addEventListener('lost', (event) => {
+    device.addEventListener('lost', (event: any) => {
       console.error('WebGPU device lost:', event.reason);
       if (event.reason === 'destroyed') {
         console.log('Device was intentionally destroyed');

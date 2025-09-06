@@ -13,6 +13,9 @@ struct InstanceData {
   tileX: f32,
   tileY: f32,
   brightness: f32,
+  audioOffsetX: f32,
+  audioOffsetY: f32,
+  audioIntensity: f32,
   pad: f32,
 }
 
@@ -40,7 +43,11 @@ fn main(
   
   // Calculate tile position
   let tileSize = 2.0 / vec2<f32>(uniforms.cols, uniforms.rows);
-  let tilePos = vec2<f32>(instance.tileX, instance.tileY) * tileSize - 1.0 + tileSize * 0.5;
+  let baseTilePos = vec2<f32>(instance.tileX, instance.tileY) * tileSize - 1.0 + tileSize * 0.5;
+  
+  // Apply audio-reactive movement offsets
+  let audioOffset = vec2<f32>(instance.audioOffsetX, instance.audioOffsetY) * instance.audioIntensity * uniforms.strength;
+  let tilePos = baseTilePos + audioOffset;
   
   // Scale vertex position to tile size
   let localPos = input.position * tileSize * 0.5;

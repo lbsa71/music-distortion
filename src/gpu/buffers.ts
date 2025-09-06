@@ -1,20 +1,15 @@
-import { TileUniforms } from '../core/config.js';
+import { TileUniforms, DetailedAudioData } from '../core/config.js';
 import { GPUDeviceInfo } from './device.js';
 
-// WebGPU types
-declare global {
-  const GPUBufferUsage: {
-    readonly VERTEX: number;
-    readonly UNIFORM: number;
-    readonly STORAGE: number;
-    readonly COPY_DST: number;
-  };
-}
+// WebGPU types are imported from @webgpu/types
 
 export interface TileInstance {
   tileX: number;
   tileY: number;
   brightness: number;
+  audioOffsetX: number;
+  audioOffsetY: number;
+  audioIntensity: number;
   pad: number;
 }
 
@@ -71,8 +66,8 @@ export class BufferManager {
         this.instanceBuffer.destroy();
       }
 
-      // Each instance is 4 floats (16 bytes)
-      const bufferSize = tileCount * 16;
+      // Each instance is 7 floats (28 bytes)
+      const bufferSize = tileCount * 28;
       
       this.instanceBuffer = this.device.createBuffer({
         size: bufferSize,
@@ -85,7 +80,7 @@ export class BufferManager {
       // Fill instance data
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
-          const index = (row * cols + col) * 4;
+          const index = (row * cols + col) * 7;
           
           // Calculate tile UV coordinates and brightness sampling
           const tileX = col;
@@ -95,10 +90,40 @@ export class BufferManager {
           // For now, use a simple pattern - this would be updated with actual image analysis
           const brightness = 0.5 + 0.5 * Math.sin((col + row) * 0.1);
           
-          instanceData[index + 0] = tileX;     // tileX
-          instanceData[index + 1] = tileY;     // tileY
-          instanceData[index + 2] = brightness; // brightness
-          instanceData[index + 3] = 0;         // padding
+          // Generate per-tile audio movement patterns
+          // Each tile gets unique movement characteristics based on position
+          const normalizedX = col / cols;
+          const normalizedY = row / rows;
+          
+          // Create complex movement patterns using multiple sine waves
+          const freq1 = 2.0 + normalizedX * 3.0;
+          const freq2 = 1.5 + normalizedY * 2.5;
+          const freq3 = 3.0 + (normalizedX + normalizedY) * 2.0;
+          
+          // X movement: combination of different frequencies
+          const audioOffsetX = 0.1 * (
+            Math.sin(normalizedX * freq1 * Math.PI) * 0.4 +
+            Math.cos(normalizedY * freq2 * Math.PI) * 0.3 +
+            Math.sin((normalizedX + normalizedY) * freq3 * Math.PI) * 0.3
+          );
+          
+          // Y movement: different pattern for variety
+          const audioOffsetY = 0.1 * (
+            Math.cos(normalizedX * freq2 * Math.PI) * 0.3 +
+            Math.sin(normalizedY * freq1 * Math.PI) * 0.4 +
+            Math.cos((normalizedX - normalizedY) * freq3 * Math.PI) * 0.3
+          );
+          
+          // Audio intensity varies by position (will be updated with real audio data)
+          const audioIntensity = 0.5 + 0.5 * Math.sin((col + row) * 0.2);
+          
+          instanceData[index + 0] = tileX;           // tileX
+          instanceData[index + 1] = tileY;           // tileY
+          instanceData[index + 2] = brightness;      // brightness
+          instanceData[index + 3] = audioOffsetX;     // audioOffsetX
+          instanceData[index + 4] = audioOffsetY;    // audioOffsetY
+          instanceData[index + 5] = audioIntensity;   // audioIntensity
+          instanceData[index + 6] = 0;               // padding
         }
       }
 
@@ -137,11 +162,11 @@ export class BufferManager {
     }
 
     const tileCount = cols * rows;
-    const instanceData = new Float32Array(tileCount * 4);
+    const instanceData = new Float32Array(tileCount * 7);
     
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const index = (row * cols + col) * 4;
+        const index = (row * cols + col) * 7;
         
         // Keep existing position data
         instanceData[index + 0] = col;
@@ -150,7 +175,170 @@ export class BufferManager {
         // Update brightness
         const brightness = brightnessSampler(col / cols, row / rows);
         instanceData[index + 2] = brightness;
-        instanceData[index + 3] = 0;
+        
+        // Keep existing audio movement data (will be updated separately)
+        const normalizedX = col / cols;
+        const normalizedY = row / rows;
+        
+        const freq1 = 2.0 + normalizedX * 3.0;
+        const freq2 = 1.5 + normalizedY * 2.5;
+        const freq3 = 3.0 + (normalizedX + normalizedY) * 2.0;
+        
+        const audioOffsetX = 0.1 * (
+          Math.sin(normalizedX * freq1 * Math.PI) * 0.4 +
+          Math.cos(normalizedY * freq2 * Math.PI) * 0.3 +
+          Math.sin((normalizedX + normalizedY) * freq3 * Math.PI) * 0.3
+        );
+        
+        const audioOffsetY = 0.1 * (
+          Math.cos(normalizedX * freq2 * Math.PI) * 0.3 +
+          Math.sin(normalizedY * freq1 * Math.PI) * 0.4 +
+          Math.cos((normalizedX - normalizedY) * freq3 * Math.PI) * 0.3
+        );
+        
+        const audioIntensity = 0.5 + 0.5 * Math.sin((col + row) * 0.2);
+        
+        instanceData[index + 3] = audioOffsetX;
+        instanceData[index + 4] = audioOffsetY;
+        instanceData[index + 5] = audioIntensity;
+        instanceData[index + 6] = 0;
+      }
+    }
+
+    this.device.queue.writeBuffer(this.instanceBuffer, 0, instanceData);
+  }
+
+  updateInstanceAudioMovement(cols: number, rows: number, audioBands: { low: number; mid: number; high: number }, time: number): void {
+    if (!this.instanceBuffer || this.currentCols !== cols || this.currentRows !== rows) {
+      return;
+    }
+
+    const tileCount = cols * rows;
+    const instanceData = new Float32Array(tileCount * 7);
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const index = (row * cols + col) * 7;
+        
+        // Keep existing position data
+        instanceData[index + 0] = col;
+        instanceData[index + 1] = row;
+        
+        // Keep existing brightness (will be updated separately)
+        const brightness = 0.5 + 0.5 * Math.sin((col + row) * 0.1);
+        instanceData[index + 2] = brightness;
+        
+        // Calculate complex audio-reactive movement
+        const normalizedX = col / cols;
+        const normalizedY = row / rows;
+        
+        // Each tile responds differently to different frequency bands
+        const lowResponse = audioBands.low * (0.5 + 0.5 * Math.sin(normalizedX * 4.0 * Math.PI));
+        const midResponse = audioBands.mid * (0.5 + 0.5 * Math.cos(normalizedY * 3.0 * Math.PI));
+        const highResponse = audioBands.high * (0.5 + 0.5 * Math.sin((normalizedX + normalizedY) * 5.0 * Math.PI));
+        
+        // Create time-varying movement patterns
+        const timePhase1 = time * 0.5 + normalizedX * 2.0 * Math.PI;
+        const timePhase2 = time * 0.7 + normalizedY * 1.5 * Math.PI;
+        const timePhase3 = time * 1.2 + (normalizedX + normalizedY) * 3.0 * Math.PI;
+        
+        // X movement: combination of different audio bands and time
+        const audioOffsetX = 0.15 * (
+          Math.sin(timePhase1) * lowResponse * 0.4 +
+          Math.cos(timePhase2) * midResponse * 0.3 +
+          Math.sin(timePhase3) * highResponse * 0.3
+        );
+        
+        // Y movement: different pattern for variety
+        const audioOffsetY = 0.15 * (
+          Math.cos(timePhase2) * lowResponse * 0.3 +
+          Math.sin(timePhase1) * midResponse * 0.4 +
+          Math.cos(timePhase3) * highResponse * 0.3
+        );
+        
+        // Audio intensity combines all bands with position-based weighting
+        const audioIntensity = (lowResponse + midResponse + highResponse) / 3.0;
+        
+        instanceData[index + 3] = audioOffsetX;
+        instanceData[index + 4] = audioOffsetY;
+        instanceData[index + 5] = audioIntensity;
+        instanceData[index + 6] = 0;
+      }
+    }
+
+    this.device.queue.writeBuffer(this.instanceBuffer, 0, instanceData);
+  }
+
+  updateInstanceDetailedAudioMovement(cols: number, rows: number, detailedAudio: DetailedAudioData, time: number): void {
+    if (!this.instanceBuffer || this.currentCols !== cols || this.currentRows !== rows) {
+      return;
+    }
+
+    const tileCount = cols * rows;
+    const instanceData = new Float32Array(tileCount * 7);
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const index = (row * cols + col) * 7;
+        
+        // Keep existing position data
+        instanceData[index + 0] = col;
+        instanceData[index + 1] = row;
+        
+        // Keep existing brightness (will be updated separately)
+        const brightness = 0.5 + 0.5 * Math.sin((col + row) * 0.1);
+        instanceData[index + 2] = brightness;
+        
+        // Calculate complex audio-reactive movement using detailed audio data
+        const normalizedX = col / cols;
+        const normalizedY = row / rows;
+        
+        // Use spectral centroid to influence movement patterns
+        const centroidInfluence = detailedAudio.spectralCentroid;
+        const rolloffInfluence = detailedAudio.spectralRolloff;
+        
+        // Each tile responds differently to different frequency bands
+        const lowResponse = detailedAudio.bands.low * (0.5 + 0.5 * Math.sin(normalizedX * 4.0 * Math.PI));
+        const midResponse = detailedAudio.bands.mid * (0.5 + 0.5 * Math.cos(normalizedY * 3.0 * Math.PI));
+        const highResponse = detailedAudio.bands.high * (0.5 + 0.5 * Math.sin((normalizedX + normalizedY) * 5.0 * Math.PI));
+        
+        // Create time-varying movement patterns with beat detection
+        const beatMultiplier = detailedAudio.beatDetected ? 2.0 : 1.0;
+        const timePhase1 = time * 0.5 + normalizedX * 2.0 * Math.PI;
+        const timePhase2 = time * 0.7 + normalizedY * 1.5 * Math.PI;
+        const timePhase3 = time * 1.2 + (normalizedX + normalizedY) * 3.0 * Math.PI;
+        
+        // X movement: combination of different audio bands, spectral properties, and time
+        const audioOffsetX = 0.2 * beatMultiplier * (
+          Math.sin(timePhase1) * lowResponse * 0.3 +
+          Math.cos(timePhase2) * midResponse * 0.3 +
+          Math.sin(timePhase3) * highResponse * 0.2 +
+          Math.cos(timePhase1 + centroidInfluence * 2.0) * centroidInfluence * 0.1 +
+          Math.sin(timePhase2 + rolloffInfluence * 1.5) * rolloffInfluence * 0.1
+        );
+        
+        // Y movement: different pattern for variety
+        const audioOffsetY = 0.2 * beatMultiplier * (
+          Math.cos(timePhase2) * lowResponse * 0.3 +
+          Math.sin(timePhase1) * midResponse * 0.3 +
+          Math.cos(timePhase3) * highResponse * 0.2 +
+          Math.sin(timePhase2 + centroidInfluence * 1.5) * centroidInfluence * 0.1 +
+          Math.cos(timePhase1 + rolloffInfluence * 2.0) * rolloffInfluence * 0.1
+        );
+        
+        // Audio intensity combines all bands with spectral properties
+        const audioIntensity = (
+          lowResponse * 0.4 +
+          midResponse * 0.3 +
+          highResponse * 0.2 +
+          centroidInfluence * 0.05 +
+          rolloffInfluence * 0.05
+        );
+        
+        instanceData[index + 3] = audioOffsetX;
+        instanceData[index + 4] = audioOffsetY;
+        instanceData[index + 5] = audioIntensity;
+        instanceData[index + 6] = 0;
       }
     }
 

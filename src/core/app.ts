@@ -1,5 +1,5 @@
 import { StateMachine } from './fsm.js';
-import { DEFAULT_CONFIG, AppConfig, TileUniforms, AudioBands, clamp, easeInOutCubic, generateLogWeightedIntensity } from './config.js';
+import { DEFAULT_CONFIG, AppConfig, TileUniforms, AudioBands, DetailedAudioData, clamp, easeInOutCubic, generateLogWeightedIntensity } from './config.js';
 import { AudioAnalyzer } from '../audio/analyzer.js';
 import { getAudioStream, stopAudioStream, requestAudioPermission } from '../audio/input.js';
 import { ImageLoader, LoadedImage } from '../images/loader.js';
@@ -56,21 +56,31 @@ export class MusicMosaicApp {
       console.log('Initializing Music Mosaic App...');
       
       // Initialize image loader
+      console.log('Step 1: Initializing image loader...');
       await this.imageLoader.initialize();
+      console.log('✓ Image loader initialized');
       
       // Try WebGPU first, fallback to WebGL2
+      console.log('Step 2: Initializing renderer...');
       await this.initializeRenderer();
+      console.log('✓ Renderer initialized');
       
       // Setup UI
+      console.log('Step 3: Setting up UI...');
       await this.uiController.populateAudioDevices();
+      console.log('✓ Audio devices populated');
       this.uiController.showOverlay();
+      console.log('✓ Overlay shown');
       
       // Transition to IDLE state
+      console.log('Step 4: Transitioning to IDLE state...');
       this.stateMachine.transitionTo('IDLE');
+      console.log('✓ State transitioned to IDLE');
       
       console.log('App initialized successfully');
     } catch (error) {
       console.error('Error initializing app:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw error;
     }
   }
@@ -339,6 +349,12 @@ export class MusicMosaicApp {
     const audioBands = this.getAudioBands();
     const rms = this.audioAnalyzer?.getRMS() || 0;
     
+    // Get detailed audio data for enhanced movement
+    let detailedAudio: DetailedAudioData | null = null;
+    if (this.audioAnalyzer) {
+      detailedAudio = this.audioAnalyzer.getDetailedAudioData();
+    }
+    
     // Check silence if audio is active
     if (this.audioAnalyzer) {
       const silenceState = this.audioAnalyzer.checkSilence();
@@ -354,9 +370,15 @@ export class MusicMosaicApp {
     // Create uniforms for rendering
     const uniforms = this.createUniforms(now);
     
-    // Render frame
+    // Render frame with enhanced audio data
     if (this.renderer) {
-      this.renderer.render(uniforms, audioBands);
+      if (detailedAudio && 'renderWithDetailedAudio' in this.renderer) {
+        // Use WebGPU renderer with detailed audio data
+        (this.renderer as WebGPURenderer).renderWithDetailedAudio(uniforms, detailedAudio);
+      } else {
+        // Fallback to basic audio bands
+        this.renderer.render(uniforms, audioBands);
+      }
     }
     
     // Update UI

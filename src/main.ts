@@ -2,6 +2,13 @@ import { MusicMosaicApp } from './core/app.js';
 
 async function main() {
   try {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      await new Promise(resolve => {
+        document.addEventListener('DOMContentLoaded', resolve);
+      });
+    }
+
     // Get canvas element
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     if (!canvas) {

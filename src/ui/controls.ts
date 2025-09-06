@@ -17,6 +17,11 @@ export interface UIElements {
   enableAudioBtn: HTMLButtonElement;
   visualizeWithoutAudioBtn: HTMLButtonElement;
   
+  // Settings modal elements
+  settingsToggle: HTMLButtonElement;
+  settingsModal: HTMLElement;
+  settingsClose: HTMLButtonElement;
+  
   // Audio-reactive effect controls
   rippleIntensitySlider: HTMLInputElement;
   pulseIntensitySlider: HTMLInputElement;
@@ -56,16 +61,31 @@ export class UIController {
 
   constructor(config: AppConfig) {
     this.config = config;
-    this.elements = this.getUIElements();
-    this.initializeControls();
-    this.setupEventListeners();
+    console.log('UIController: Starting initialization...');
+    try {
+      this.elements = this.getUIElements();
+      console.log('UIController: Elements found successfully');
+      this.initializeControls();
+      console.log('UIController: Controls initialized');
+      this.setupEventListeners();
+      console.log('UIController: Event listeners setup complete');
+    } catch (error) {
+      console.error('UIController initialization error:', error);
+      throw error;
+    }
   }
 
   private getUIElements(): UIElements {
     const get = (id: string) => {
       const element = document.getElementById(id);
       if (!element) {
-        throw new Error(`UI element not found: ${id}`);
+        console.error(`UI element not found: ${id}`);
+        // Create a placeholder element to prevent crashes
+        const placeholder = document.createElement('div');
+        placeholder.id = id;
+        placeholder.style.display = 'none';
+        document.body.appendChild(placeholder);
+        return placeholder;
       }
       return element;
     };
@@ -85,6 +105,11 @@ export class UIController {
       overlay: get('overlay'),
       enableAudioBtn: get('enable-audio') as HTMLButtonElement,
       visualizeWithoutAudioBtn: get('visualize-without-audio') as HTMLButtonElement,
+      
+      // Settings modal elements
+      settingsToggle: get('settings-toggle') as HTMLButtonElement,
+      settingsModal: get('settings-modal'),
+      settingsClose: get('settings-close') as HTMLButtonElement,
       
       // Audio-reactive effect controls
       rippleIntensitySlider: get('ripple-intensity') as HTMLInputElement,
@@ -140,6 +165,22 @@ export class UIController {
   }
 
   private setupEventListeners(): void {
+    // Settings modal controls
+    this.elements.settingsToggle.addEventListener('click', () => {
+      this.toggleSettingsModal();
+    });
+    
+    this.elements.settingsClose.addEventListener('click', () => {
+      this.hideSettingsModal();
+    });
+    
+    // Close modal when clicking outside
+    this.elements.settingsModal.addEventListener('click', (e) => {
+      if (e.target === this.elements.settingsModal) {
+        this.hideSettingsModal();
+      }
+    });
+    
     // Audio controls
     this.elements.startAudioBtn.addEventListener('click', () => {
       this.emit('start-audio');
@@ -375,5 +416,18 @@ export class UIController {
 
   getConfig(): AppConfig {
     return { ...this.config };
+  }
+
+  // Settings modal methods
+  private toggleSettingsModal(): void {
+    this.elements.settingsModal.classList.toggle('hidden');
+  }
+
+  private hideSettingsModal(): void {
+    this.elements.settingsModal.classList.add('hidden');
+  }
+
+  showSettingsModal(): void {
+    this.elements.settingsModal.classList.remove('hidden');
   }
 }
