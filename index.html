@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGPU Music-Reactive Image Mosaic</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="canvas"></canvas>
+      <canvas id="stars-canvas"></canvas>
+      
+      <!-- Settings Toggle Button -->
+      <button id="settings-toggle" class="settings-cog">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m15.5-6.5l-4.24 4.24M6.74 6.74L2.5 2.5m15.5 15.5l-4.24-4.24M6.74 17.26L2.5 21.5"></path>
+        </svg>
+      </button>
+      
+      <!-- Collapsible Settings Modal -->
+      <div id="settings-modal" class="settings-modal hidden">
+        <div id="settings-content">
+          <div class="settings-header">
+            <h3>Settings</h3>
+            <button id="settings-close" class="close-btn">&times;</button>
+          </div>
+          <div id="controls">
+        <div id="audio-controls">
+          <label>
+            Audio Input:
+            <select id="audio-input-select">
+              <option value="">Select Audio Device</option>
+            </select>
+          </label>
+          <button id="start-audio">Start Audio</button>
+          <button id="stop-audio" disabled>Stop Audio</button>
+        </div>
+        
+        <div id="visual-controls">
+          <label>
+            Grid Tile Size (1px = single tile, 2000px = many tiles):
+            <input type="range" id="tile-size" min="1" max="2000" value="32" />
+            <span id="tile-size-value">32px</span>
+          </label>
+          
+          <label>
+            Distortion Strength:
+            <input type="range" id="distortion-strength" min="0" max="2" step="0.1" value="1.0" />
+            <span id="distortion-strength-value">1.0</span>
+          </label>
+          
+          <label>
+            Cycle Duration:
+            <input type="range" id="cycle-duration" min="10" max="60" value="30" />
+            <span id="cycle-duration-value">30s</span>
+          </label>
+          
+          <label>
+            Silence Threshold:
+            <input type="range" id="silence-threshold" min="0.001" max="0.1" step="0.001" value="0.01" />
+            <span id="silence-threshold-value">0.01</span>
+          </label>
+          
+          <label>
+            Audio Transition Threshold:
+            <input type="range" id="audio-transition-threshold" min="0.1" max="1.0" step="0.1" value="0.3" />
+            <span id="audio-transition-threshold-value">0.3</span>
+          </label>
+          
+          <label>
+            Audio Transition Hold:
+            <input type="range" id="audio-transition-hold" min="100" max="3000" step="100" value="1000" />
+            <span id="audio-transition-hold-value">1000ms</span>
+          </label>
+        </div>
+        
+        <div id="audio-effects-controls">
+          <h3>Audio-Reactive Effects</h3>
+          
+          <label>
+            Ripple Intensity (Bass):
+            <input type="range" id="ripple-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="ripple-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            Pulse Intensity (Mid):
+            <input type="range" id="pulse-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="pulse-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            Detail Intensity (Treble):
+            <input type="range" id="detail-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="detail-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            Beat Intensity:
+            <input type="range" id="beat-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="beat-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            Rotation Intensity:
+            <input type="range" id="rotation-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="rotation-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            Flow Intensity:
+            <input type="range" id="flow-intensity" min="0" max="2" step="0.1" value="1.0" />
+            <span id="flow-intensity-value">1.0</span>
+          </label>
+          
+          <label>
+            <input type="checkbox" id="enable-random-intensities" checked />
+            Enable Random Intensity Cycling
+          </label>
+        </div>
+        
+        <div id="debug-controls">
+          <button id="next-image">Next Image</button>
+          <button id="freeze-audio">Freeze Audio</button>
+        </div>
+        
+        <div id="status">
+          <div id="fps">FPS: 0</div>
+          <div id="rms">RMS: 0.000</div>
+          <div id="state">State: BOOT</div>
+          <div id="audio-bands">
+            <div>Low: <span id="low-band">0.0</span></div>
+            <div>Mid: <span id="mid-band">0.0</span></div>
+            <div>High: <span id="high-band">0.0</span></div>
+          </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="overlay" class="hidden">
+        <div id="overlay-content">
+          <h2>Audio Permission Required</h2>
+          <p>Please allow microphone access to enable audio-reactive visuals.</p>
+          <button id="enable-audio">Enable Audio</button>
+          <button id="visualize-without-audio">Visualize Without Audio</button>
+        </div>
+      </div>
+    </div>
+    
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
